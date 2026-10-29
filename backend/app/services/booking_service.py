@@ -767,6 +767,31 @@ def perform_qr_checkout(
             entity_id=booking.id,
         )
 
+        # Auto-create DELAY incident for overdue return
+        from app.models import Incident
+        incident = Incident(
+            booking_id=booking.id,
+            reported_by=actor.id,
+            incident_type="DELAY",
+            severity="MEDIUM" if overdue_minutes < 60 else "HIGH",
+            description=f"Automated incident: Overdue equipment return. Session #{booking.id} was returned {overdue_minutes} minutes past scheduled return time ({booking.slot_end} UTC).",
+            evidence_json=[f"overdue_minutes={overdue_minutes}", f"slot_end={booking.slot_end.isoformat()}", f"returned_at={now.isoformat()}"],
+            status="OPEN",
+        )
+        db.add(incident)
+        db.flush()
+
+        audit_service.write_audit(
+            db,
+            entity_type="incident",
+            entity_id=incident.id,
+            action="INCIDENT_AUTO_CREATED_OVERDUE",
+            payload={"booking_id": booking.id, "overdue_minutes": overdue_minutes, "severity": incident.severity},
+            actor_id=None,
+            actor_role="system",
+            rationale=f"Auto-created delay incident for {overdue_minutes}m overdue return.",
+        )
+
     # Advisory photo-diff
     diff_result: Optional[Dict[str, Any]] = None
     pre_report = (

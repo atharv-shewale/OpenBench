@@ -116,7 +116,7 @@ def get_clock(_=Depends(get_manager_or_admin)):
 def advance_clock(
     payload: ClockAdvance,
     db: Session = Depends(get_db),
-    current_user=Depends(get_admin),
+    current_user=Depends(get_manager_or_admin),
 ):
     new_offset = demo_clock.advance_clock(payload.seconds)
     write_audit(
@@ -127,7 +127,7 @@ def advance_clock(
         payload={"seconds_advanced": payload.seconds, "new_offset": new_offset},
         actor_id=current_user.id,
         actor_role=current_user.role,
-        rationale=f"Demo clock advanced by {payload.seconds}s by admin.",
+        rationale=f"Demo clock advanced by {payload.seconds}s by {current_user.role} ({current_user.full_name}).",
     )
     db.commit()
     real = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -135,7 +135,7 @@ def advance_clock(
 
 
 @router.post("/clock/reset", response_model=ClockState)
-def reset_clock(db: Session = Depends(get_db), current_user=Depends(get_admin)):
+def reset_clock(db: Session = Depends(get_db), current_user=Depends(get_manager_or_admin)):
     demo_clock.reset_clock()
     write_audit(
         db,
@@ -145,7 +145,7 @@ def reset_clock(db: Session = Depends(get_db), current_user=Depends(get_admin)):
         payload={"new_offset": 0},
         actor_id=current_user.id,
         actor_role=current_user.role,
-        rationale="Demo clock reset to real UTC by admin.",
+        rationale=f"Demo clock reset to real UTC by {current_user.role} ({current_user.full_name}).",
     )
     db.commit()
     real = datetime.now(timezone.utc).replace(tzinfo=None)

@@ -359,23 +359,53 @@ class SideBySideConditionComparison(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Usage Signal & Telemetry Simulator
+# ─────────────────────────────────────────────────────────────────────────────
+
+class UsageSignalPayload(BaseModel):
+    is_active: bool = True
+    power_watts: Optional[float] = 120.0
+    activity_type: Optional[str] = "spindle_run"
+    telemetry: Optional[Dict[str, Any]] = None
+    simulated: bool = True
+
+
+class UsageSignalResponse(BaseModel):
+    equipment_id: int
+    signal_received_at: datetime
+    is_active: bool
+    active_booking_id: Optional[int] = None
+    simulated: bool = True
+    message: str
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Incidents
 # ─────────────────────────────────────────────────────────────────────────────
 
 class IncidentCreate(BaseModel):
     booking_id: int
-    severity: str       # LOW | MEDIUM | HIGH | CRITICAL
+    incident_type: str = "DAMAGE"  # DAMAGE | DELAY | DISPUTE | SAFETY
+    severity: str = "LOW"          # LOW | MEDIUM | HIGH | CRITICAL
     description: str
+    evidence_json: Optional[List[str]] = None
+
+
+class IncidentResolveRequest(BaseModel):
+    resolution: str
 
 
 class IncidentOut(BaseModel):
     id: int
     booking_id: int
     reported_by: int
+    incident_type: str = "DAMAGE"
     severity: str
     description: str
-    resolution: Optional[str]
-    resolved_at: Optional[datetime]
+    evidence_json: Optional[List[str]] = None
+    resolution: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[int] = None
     status: str
     created_at: datetime
     model_config = {"from_attributes": True}
@@ -389,6 +419,10 @@ class ProposalReviewAction(BaseModel):
     note: Optional[str] = None
 
 
+class ProposalContestRequest(BaseModel):
+    contestation_note: str
+
+
 class ProposalOut(BaseModel):
     id: int
     proposal_type: str
@@ -398,9 +432,11 @@ class ProposalOut(BaseModel):
     rationale: str
     proposed_payload: Dict[str, Any]
     status: str
-    reviewed_by: Optional[int]
-    reviewed_at: Optional[datetime]
-    review_note: Optional[str]
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    review_note: Optional[str] = None
+    contested_at: Optional[datetime] = None
+    contestation_note: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

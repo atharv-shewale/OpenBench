@@ -4,6 +4,8 @@ import { useAuthStore } from "./store/auth";
 import api from "./api/client";
 import Navbar from "./components/Navbar";
 import WhyThisOutcomeCard from "./components/WhyThisOutcomeCard";
+import DemoClockControl from "./components/DemoClockControl";
+import { ShieldAlert, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 
 // Pages
 import EquipmentDiscovery from "./pages/EquipmentDiscovery";
@@ -290,20 +292,112 @@ function Dashboard() {
   const [bookings, setBookings] = useState([]);
   const [waitlist, setWaitlist] = useState([]);
   const [balance, setBalance] = useState(null);
+  const [proposals, setProposals] = useState([]);
   const [selectedWhy, setSelectedWhy] = useState(null);
+  const [contestModal, setContestModal] = useState(null);
+  const [contestNote, setContestNote] = useState("");
+  const [contesting, setContesting] = useState(false);
 
-  useEffect(() => {
+  const fetchDashboardData = () => {
     if (!user) return;
     api.get("/bookings").then((r) => setBookings(r.data)).catch(() => {});
     api.get("/bookings/waitlist").then((r) => setWaitlist(r.data)).catch(() => {});
     api.get("/credits/balance").then((r) => setBalance(r.data)).catch(() => {});
+    api.get("/proposals/my-proposals").then((r) => setProposals(r.data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, [user]);
 
+  const handleContestSubmit = async (e) => {
+    e.preventDefault();
+    if (!contestModal || !contestNote.trim()) return;
+    setContesting(true);
+    try {
+      await api.post(`/proposals/${contestModal.id}/contest`, {
+        contestation_note: contestNote.trim(),
+      });
+      alert("Contestation submitted. A lab manager will review your statement before any penalty is finalized.");
+      setContestModal(null);
+      setContestNote("");
+      fetchDashboardData();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to contest strike proposal.");
+    } finally {
+      setContesting(false);
+    }
+  };
+
   if (!user) return <Navigate to="/login" />;
+
+  const pendingProposals = proposals.filter((p) => ["PENDING", "CONTESTED"].includes(p.status));
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        {/* Proposed Strike / Penalty Warnings */}
+        {pendingProposals.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {pendingProposals.map((p) => (
+              <div
+                key={p.id}
+                className="bg-amber-50 border border-amber-200/90 rounded-2xl p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-amber-100 text-amber-800 mt-0.5">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm text-amber-950">
+                        {p.proposal_type === "STRIKE_PROPOSAL"
+                          ? "Proposed Strike Notice (Human Review Pending)"
+                          : "Proposed Account Action"}
+                      </span>
+                      <span
+                        className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                          p.status === "CONTESTED"
+                            ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
+                            : "bg-amber-200 text-amber-900"
+                        }`}
+                      >
+                        {p.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-800 mt-1 font-medium">
+                      Reason: <span className="italic font-semibold">"{p.suggested_action}"</span>
+                    </p>
+                    <p className="text-[11px] text-amber-700/80 mt-0.5">
+                      Advisory policy: Automated actions are never applied immediately. You may contest with context before a lab manager decides.
+                    </p>
+                    {p.contestation_note && (
+                      <div className="mt-2 text-xs bg-white/70 border border-amber-200 rounded-xl p-2.5 text-gray-700">
+                        <span className="font-bold text-gray-900 block text-[10px] uppercase tracking-wider mb-0.5">
+                          Your Contestation Statement:
+                        </span>
+                        "{p.contestation_note}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {p.status === "PENDING" && (
+                  <button
+                    onClick={() => {
+                      setContestModal(p);
+                      setContestNote("");
+                    }}
+                    className="whitespace-nowrap px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition shadow-xs shadow-amber-600/20"
+                  >
+                    Contest Strike
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
             <div>
@@ -471,6 +565,77 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Contestation Modal */}
+      {contestModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-black text-gray-900">
+                  Contest Strike Proposal #{contestModal.id}
+                </h3>
+              </div>
+              <button
+                onClick={() => setContestModal(null)}
+                className="text-gray-400 hover:text-gray-600 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-600 space-y-3">
+              <p>
+                Under OpenBench governance non-negotiables, no automated strikes are finalized without manager confirmation. If delays occurred due to equipment malfunction, emergency transit delay, or supervisor hold, describe below.
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">
+                  Proposed Reason
+                </span>
+                <span className="font-semibold text-gray-900">
+                  {contestModal.suggested_action}
+                </span>
+              </div>
+
+              <form onSubmit={handleContestSubmit} className="space-y-4 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
+                    Your Statement / Explanation <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="e.g. The laboratory circuit breaker tripped at 14:15. I alerted Lab Assistant Banerjee immediately and waited for power restoration."
+                    value={contestNote}
+                    onChange={(e) => setContestNote(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs focus:ring-2 focus:ring-amber-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setContestModal(null)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={contesting || !contestNote.trim()}
+                    className="px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-sm"
+                  >
+                    {contesting ? "Submitting..." : "Submit Contestation"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -493,6 +658,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Navbar />
+      <DemoClockControl />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

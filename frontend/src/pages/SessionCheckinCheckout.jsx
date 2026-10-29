@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../api/client";
 import { useAuthStore } from "../store/auth";
 import SideBySideConditionViewer from "../components/SideBySideConditionViewer";
+import MachineSimulatorPanel from "../components/MachineSimulatorPanel";
+import IncidentReportingModal from "../components/IncidentReportingModal";
 import {
   QrCode,
   ShieldCheck,
@@ -45,6 +47,7 @@ export default function SessionCheckinCheckout() {
   // Extension State
   const [extending, setExtending] = useState(false);
   const [extraHours, setExtraHours] = useState(1);
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
 
   const fetchSession = async () => {
     setLoading(true);
@@ -242,6 +245,15 @@ export default function SessionCheckinCheckout() {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowIncidentModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition shadow-2xs"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                Report Incident
+              </button>
+
               <span
                 className={`text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider border ${
                   isCompleted
@@ -266,6 +278,16 @@ export default function SessionCheckinCheckout() {
               <button onClick={() => setActionSuccess(null)} className="text-emerald-700 hover:text-emerald-900 text-xs">
                 Dismiss
               </button>
+            </div>
+          )}
+
+          {/* Machine Activity Telemetry & Simulator Panel */}
+          {(isApproved || isInProgress) && (
+            <div className="mt-6">
+              <MachineSimulatorPanel
+                equipmentId={booking.equipment_id}
+                equipmentName={equipment?.name}
+              />
             </div>
           )}
 
@@ -526,6 +548,16 @@ export default function SessionCheckinCheckout() {
           )}
         </div>
       </div>
+
+      {/* Incident Reporting Modal */}
+      <IncidentReportingModal
+        bookingId={booking.id}
+        equipmentName={equipment?.name}
+        isOpen={showIncidentModal}
+        onClose={() => setShowIncidentModal(false)}
+        onSuccess={() => setActionSuccess("Incident report filed successfully and logged in audit ledger.")}
+      />
     </div>
   );
 }
+

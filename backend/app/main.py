@@ -18,7 +18,7 @@ from app.models import (  # noqa: F401  — ensure all models are registered
     Notification, ActionProposal, Strike, User, UserCredential, WaitlistEntry,
 )
 from app.database import Base
-from app.routers import auth, labs, equipment, bookings, proposals, audit, credits, admin, notifications, media
+from app.routers import auth, labs, equipment, bookings, proposals, audit, credits, admin, notifications, media, incidents
 from app.scheduler import start_scheduler, stop_scheduler
 
 
@@ -43,6 +43,7 @@ def _migrate_columns() -> None:
     from sqlalchemy import text
     with engine.connect() as conn:
         try:
+            # condition_reports
             res = conn.execute(text("PRAGMA table_info(condition_reports)"))
             cols = {row[1] for row in res.fetchall()}
             if "checklist_json" not in cols:
@@ -51,6 +52,37 @@ def _migrate_columns() -> None:
                 conn.execute(text("ALTER TABLE condition_reports ADD COLUMN diff_result JSON"))
             if "flagged_for_review" not in cols:
                 conn.execute(text("ALTER TABLE condition_reports ADD COLUMN flagged_for_review BOOLEAN DEFAULT 0"))
+
+            # equipment
+            res = conn.execute(text("PRAGMA table_info(equipment)"))
+            cols = {row[1] for row in res.fetchall()}
+            if "last_usage_signal_at" not in cols:
+                conn.execute(text("ALTER TABLE equipment ADD COLUMN last_usage_signal_at DATETIME"))
+            if "current_telemetry" not in cols:
+                conn.execute(text("ALTER TABLE equipment ADD COLUMN current_telemetry JSON"))
+
+            # bookings
+            res = conn.execute(text("PRAGMA table_info(bookings)"))
+            cols = {row[1] for row in res.fetchall()}
+            if "last_usage_signal_at" not in cols:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN last_usage_signal_at DATETIME"))
+
+            # incidents
+            res = conn.execute(text("PRAGMA table_info(incidents)"))
+            cols = {row[1] for row in res.fetchall()}
+            if "incident_type" not in cols:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN incident_type VARCHAR(30) DEFAULT 'DAMAGE'"))
+            if "evidence_json" not in cols:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN evidence_json JSON"))
+
+            # action_proposals
+            res = conn.execute(text("PRAGMA table_info(action_proposals)"))
+            cols = {row[1] for row in res.fetchall()}
+            if "contested_at" not in cols:
+                conn.execute(text("ALTER TABLE action_proposals ADD COLUMN contested_at DATETIME"))
+            if "contestation_note" not in cols:
+                conn.execute(text("ALTER TABLE action_proposals ADD COLUMN contestation_note TEXT"))
+
             conn.commit()
         except Exception:
             pass
@@ -105,6 +137,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix=api_prefix)
     app.include_router(notifications.router, prefix=api_prefix)
     app.include_router(media.router, prefix=api_prefix)
+    app.include_router(incidents.router, prefix=api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/api/health", tags=["health"])

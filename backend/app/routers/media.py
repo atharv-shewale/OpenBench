@@ -38,3 +38,4 @@ def get_condition_photo(
             "X-Content-Type-Options": "nosniff",
         },
     )
+

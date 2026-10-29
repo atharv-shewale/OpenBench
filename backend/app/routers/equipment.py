@@ -10,6 +10,7 @@ from app.clock import app_now
 from app.database import get_db
 from app.dependencies import get_current_user, get_owner_or_above, get_any_authenticated
 from app.models import (
+    Booking,
     Equipment,
     EquipmentAvailabilityWindow,
     Lab,
@@ -23,6 +24,8 @@ from app.schemas import (
     EquipmentCreate,
     EquipmentOut,
     EquipmentUpdate,
+    UsageSignalPayload,
+    UsageSignalResponse,
 )
 from app.services.audit_service import write_audit
 
@@ -354,3 +357,99 @@ def delete_equipment(
     db.delete(equip)
     db.commit()
     return {"message": f"Equipment #{equipment_id} removed."}
+
+
+# ── Telemetry & Usage Signal (Machine Simulator) ──────────────────────────────
+
+@router.post("/{equipment_id}/usage-signal", response_model=UsageSignalResponse)
+def emit_usage_signal(
+    equipment_id: int,
+    payload: UsageSignalPayload = UsageSignalPayload(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_any_authenticated),
+):
+    """
+    Usage signal / IoT telemetry heartbeat endpoint.
+    Used by physical equipment sensors or the Machine Simulator panel.
+    Clearly labelled as simulated in telemetry payload and audit trail.
+    Updates the equipment and any active booking, preventing false no-show auto-releases.
+    """
+    equip = db.query(Equipment).filter(Equipment.id == equipment_id).first()
+    if not equip:
+        raise HTTPException(status_code=404, detail="Equipment not found.")
+
+    now = app_now()
+    equip.last_usage_signal_at = now
+    equip.current_telemetry = {
+        **payload.model_dump(),
+        "reported_at": now.isoformat(),
+        "actor_id": current_user.id,
+    }
+
+    # Find active or approved booking in current window
+    active_booking = (
+        db.query(Booking)
+        .filter(
+            Booking.equipment_id == equipment_id,
+            Booking.status.in_(["APPROVED", "IN_PROGRESS"]),
+            Booking.slot_start <= now,
+            Booking.slot_end >= now,
+        )
+        .first()
+    )
+
+    if active_booking:
+        active_booking.last_usage_signal_at = now
+
+    write_audit(
+        db,
+        entity_type="equipment",
+        entity_id=equip.id,
+        action="USAGE_SIGNAL_RECORDED",
+        payload={
+            "power_watts": payload.power_watts,
+            "is_active": payload.is_active,
+            "activity_type": payload.activity_type,
+            "simulated": payload.simulated,
+            "active_booking_id": active_booking.id if active_booking else None,
+        },
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        rationale=f"Usage signal emitted (Simulated: {payload.simulated}). Activity: {payload.activity_type}.",
+    )
+    db.commit()
+    db.refresh(equip)
+
+    return UsageSignalResponse(
+        equipment_id=equip.id,
+        signal_received_at=now,
+        is_active=payload.is_active,
+        active_booking_id=active_booking.id if active_booking else None,
+        simulated=payload.simulated,
+        message=f"Usage signal processed for {equip.name}. Active telemetry verified (Simulated: {payload.simulated}).",
+    )
+
+
+@router.get("/{equipment_id}/telemetry", response_model=dict)
+def get_equipment_telemetry(
+    equipment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_any_authenticated),
+):
+    """Returns the latest telemetry heartbeat and simulated machine state."""
+    equip = db.query(Equipment).filter(Equipment.id == equipment_id).first()
+    if not equip:
+        raise HTTPException(status_code=404, detail="Equipment not found.")
+
+    return {
+        "equipment_id": equip.id,
+        "name": equip.name,
+        "last_usage_signal_at": equip.last_usage_signal_at,
+        "current_telemetry": equip.current_telemetry or {
+            "is_active": False,
+            "power_watts": 0.0,
+            "simulated": True,
+            "activity_type": "idle",
+        },
+        "simulated": True,
+    }

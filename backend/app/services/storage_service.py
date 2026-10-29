@@ -71,3 +71,4 @@ def verify_signed_url(filename: str, sig: str, exp: int) -> bool:
     message = f"{clean_name}:{exp}".encode("utf-8")
     expected_sig = hmac.new(SECRET_KEY.encode("utf-8"), message, hashlib.sha256).hexdigest()[:32]
     return hmac.compare_digest(sig, expected_sig)
+

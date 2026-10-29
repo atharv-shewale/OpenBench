@@ -182,6 +182,25 @@ def _dispatch_reminders_and_overdue_alerts() -> None:
         db.close()
 
 
+def _check_auto_release_unclaimed() -> None:
+    """
+    Scans for APPROVED bookings without check-in or usage signal
+    past the grace period, auto-releases the slot, promotes the waitlist,
+    and stages a PROPOSED strike for manager review.
+    """
+    from app.database import SessionLocal
+    from app.services.auto_release_service import scan_and_auto_release_unclaimed_bookings
+
+    db = SessionLocal()
+    try:
+        scan_and_auto_release_unclaimed_bookings(db, grace_minutes=20)
+    except Exception:
+        logger.exception("Error in _check_auto_release_unclaimed job")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     scheduler.add_job(
         _check_no_shows,
@@ -203,6 +222,13 @@ def start_scheduler() -> None:
         id="reminders_and_overdue",
         replace_existing=True,
         name="Session reminders and overdue returns notifier",
+    )
+    scheduler.add_job(
+        _check_auto_release_unclaimed,
+        trigger=IntervalTrigger(minutes=2),
+        id="auto_release_unclaimed",
+        replace_existing=True,
+        name="Auto-release unclaimed bookings after grace period",
     )
     scheduler.start()
     logger.info("APScheduler started with %d jobs.", len(scheduler.get_jobs()))

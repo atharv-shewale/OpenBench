@@ -396,6 +396,20 @@ def cancel(
     return b
 
 
+@router.post("/{booking_id}/reverse-auto-release", response_model=BookingOut)
+def reverse_booking_auto_release(
+    booking_id: int,
+    payload: dict = {},
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ("owner", "manager", "admin"):
+        raise HTTPException(status_code=403, detail="Manager, owner, or admin required.")
+    from app.services.auto_release_service import reverse_auto_release
+    explanation = payload.get("explanation", "Auto-release reversed by lab manager.")
+    return reverse_auto_release(db, booking_id, current_user, explanation)
+
+
 @router.post("/{booking_id}/checkin", response_model=BookingOut)
 def checkin(
     booking_id: int,

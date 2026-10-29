@@ -156,6 +156,8 @@ class Equipment(Base):
     approver_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     rules: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     required_credentials: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    last_usage_signal_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    current_telemetry: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now, onupdate=app_now)
 
@@ -211,6 +213,7 @@ class Booking(Base):
     purpose: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     manager_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     decision_reason: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    last_usage_signal_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now, onupdate=app_now)
 
@@ -290,8 +293,10 @@ class Incident(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     booking_id: Mapped[int] = mapped_column(Integer, ForeignKey("bookings.id"), nullable=False)
     reported_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    incident_type: Mapped[str] = mapped_column(String(30), nullable=False, default="DAMAGE")  # DAMAGE | DELAY | DISPUTE | SAFETY
     severity: Mapped[str] = mapped_column(String(20), nullable=False)      # LOW | MEDIUM | HIGH | CRITICAL
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_json: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
     resolution: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     resolved_by: Mapped[Optional[int]] = mapped_column(
@@ -391,6 +396,8 @@ class ActionProposal(Base):
     )
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     review_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    contested_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    contestation_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now)
 
     reviewer: Mapped[Optional["User"]] = relationship("User", foreign_keys=[reviewed_by])

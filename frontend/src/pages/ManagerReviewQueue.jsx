@@ -23,6 +23,9 @@ import {
   Check,
   X,
   ListOrdered,
+  RotateCcw,
+  FileText,
+  Activity,
 } from "lucide-react";
 
 export default function ManagerReviewQueue() {
@@ -50,10 +53,40 @@ export default function ManagerReviewQueue() {
 
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(null);
 
+  // Tab State: "requests" vs "incidents"
+  const [activeTab, setActiveTab] = useState("requests");
+  const [incidents, setIncidents] = useState([]);
+  const [autoReleased, setAutoReleased] = useState([]);
+
+  // Incident Resolution State
+  const [resolveIncidentItem, setResolveIncidentItem] = useState(null);
+  const [resolveNotes, setResolveNotes] = useState("");
+  const [resolveStrike, setResolveStrike] = useState(false);
+  const [resolveStrikeReason, setResolveStrikeReason] = useState("");
+  const [resolveSubmitting, setResolveSubmitting] = useState(false);
+
+  // Auto-Release Reversal State
+  const [reverseBookingItem, setReverseBookingItem] = useState(null);
+  const [reverseExplanation, setReverseExplanation] = useState("");
+  const [reverseSubmitting, setReverseSubmitting] = useState(false);
+
   // Toggled breakdown cards per booking id
   const [expandedDetails, setExpandedDetails] = useState({});
 
   const isOwner = user && (user.role === "owner" || user.role === "admin");
+
+  const fetchIncidentsAndReleases = async () => {
+    try {
+      const [incRes, relRes] = await Promise.all([
+        api.get("/incidents"),
+        api.get("/bookings", { params: { status: "AUTO_RELEASED" } }),
+      ]);
+      setIncidents(incRes.data);
+      setAutoReleased(relRes.data);
+    } catch (err) {
+      console.error("Failed to load incidents / auto-released", err);
+    }
+  };
 
   const fetchQueue = async () => {
     setLoading(true);
@@ -61,6 +94,7 @@ export default function ManagerReviewQueue() {
     try {
       const res = await api.get("/bookings/review-queue");
       setItems(res.data);
+      await fetchIncidentsAndReleases();
     } catch (err) {
       if (err.response?.status === 403) {
         setError("Access Denied: Lab Manager or Lab Owner role required.");
@@ -69,6 +103,47 @@ export default function ManagerReviewQueue() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmResolveIncident = async () => {
+    if (!resolveIncidentItem || !resolveNotes.trim()) return;
+    setResolveSubmitting(true);
+    try {
+      await api.post(`/incidents/${resolveIncidentItem.id}/resolve`, {
+        resolution_notes: resolveNotes.trim(),
+        penalty_strike: resolveStrike,
+        strike_reason: resolveStrike ? resolveStrikeReason.trim() : null,
+      });
+      setActionSuccess(`Incident #${resolveIncidentItem.id} marked as RESOLVED.`);
+      setResolveIncidentItem(null);
+      setResolveNotes("");
+      setResolveStrike(false);
+      setResolveStrikeReason("");
+      fetchIncidentsAndReleases();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to resolve incident.");
+    } finally {
+      setResolveSubmitting(false);
+    }
+  };
+
+  const handleConfirmReverseAutoRelease = async () => {
+    if (!reverseBookingItem) return;
+    setReverseSubmitting(true);
+    try {
+      await api.post(`/bookings/${reverseBookingItem.id}/reverse-auto-release`, {
+        explanation: reverseExplanation.trim() || "Auto-release reversed by lab manager.",
+      });
+      setActionSuccess(`Booking #${reverseBookingItem.id} slot reinstated & auto-release reversed.`);
+      setReverseBookingItem(null);
+      setReverseExplanation("");
+      fetchIncidentsAndReleases();
+      fetchQueue();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to reverse auto-release.");
+    } finally {
+      setReverseSubmitting(false);
     }
   };
 
@@ -243,8 +318,38 @@ export default function ManagerReviewQueue() {
           </div>
         )}
 
-        {/* Filter & Search Bar */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 shadow-2xs flex flex-col sm:flex-row gap-4 items-center justify-between">
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2 mb-6 border-b border-gray-200 pb-3">
+          <button
+            onClick={() => setActiveTab("requests")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              activeTab === "requests"
+                ? "bg-brand-600 text-white shadow-xs shadow-brand-500/20"
+                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            Booking Requests ({items.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("incidents")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              activeTab === "incidents"
+                ? "bg-brand-600 text-white shadow-xs shadow-brand-500/20"
+                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            Incidents & Auto-Releases (
+            {incidents.filter((i) => i.status !== "RESOLVED").length + autoReleased.length}
+            )
+          </button>
+        </div>
+
+        {activeTab === "requests" ? (
+          <>
+            {/* Filter & Search Bar */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 shadow-2xs flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
             <input
@@ -573,6 +678,192 @@ export default function ManagerReviewQueue() {
             })}
           </div>
         )}
+          </>
+        ) : (
+          /* activeTab === "incidents" */
+          <div className="space-y-8">
+            {/* 1. Incidents Section */}
+            <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-rose-600" />
+                  <h2 className="text-lg font-black text-gray-900">
+                    Reported Incidents (Damage, Delay, Dispute, Safety)
+                  </h2>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                  {incidents.filter((i) => i.status !== "RESOLVED").length} Open
+                </span>
+              </div>
+
+              {incidents.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-500">
+                  No incident reports filed yet. Lab equipment running nominally.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {incidents.map((inc) => (
+                    <div
+                      key={inc.id}
+                      className="p-4 bg-gray-50 hover:bg-gray-100/70 border border-gray-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1 max-w-2xl">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-gray-900">
+                            Incident #{inc.id} · Booking #{inc.booking_id}
+                          </span>
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              inc.incident_type === "DAMAGE"
+                                ? "bg-rose-100 text-rose-700"
+                                : inc.incident_type === "DELAY"
+                                ? "bg-amber-100 text-amber-800"
+                                : inc.incident_type === "DISPUTE"
+                                ? "bg-purple-100 text-purple-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}
+                          >
+                            {inc.incident_type}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              inc.severity === "CRITICAL"
+                                ? "bg-rose-600 text-white"
+                                : inc.severity === "HIGH"
+                                ? "bg-rose-200 text-rose-900"
+                                : inc.severity === "MEDIUM"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            {inc.severity}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              inc.status === "RESOLVED"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {inc.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-800 font-medium">
+                          {inc.description}
+                        </p>
+                        {inc.evidence_json && inc.evidence_json.length > 0 && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[10px] text-gray-500 font-semibold">Evidence:</span>
+                            {inc.evidence_json.map((url, idx) => (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] font-bold text-brand-600 hover:underline bg-white px-2 py-0.5 rounded border border-gray-200"
+                              >
+                                View #{idx + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {inc.resolution_notes && (
+                          <p className="text-[11px] text-emerald-800 bg-emerald-50/70 border border-emerald-200/60 p-2 rounded-xl mt-1">
+                            <strong>Resolution:</strong> {inc.resolution_notes}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-gray-400">
+                          Reported by User #{inc.reported_by} at{" "}
+                          {new Date(inc.created_at).toLocaleString()}
+                        </p>
+                      </div>
+
+                      {inc.status !== "RESOLVED" && (
+                        <button
+                          onClick={() => {
+                            setResolveIncidentItem(inc);
+                            setResolveNotes("");
+                            setResolveStrike(false);
+                            setResolveStrikeReason("");
+                          }}
+                          className="self-start md:self-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                        >
+                          Resolve Incident...
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Auto-Released Sessions (Reversible) */}
+            <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-amber-600" />
+                  <div>
+                    <h2 className="text-lg font-black text-gray-900">
+                      Auto-Released Bookings (Reversible Governance)
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Released when booker failed to check in or pulse usage telemetry within grace period. A manager can reinstate.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  {autoReleased.length} Released
+                </span>
+              </div>
+
+              {autoReleased.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-500">
+                  No bookings have been auto-released.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {autoReleased.map((b) => (
+                    <div
+                      key={b.id}
+                      className="p-4 bg-gray-50 border border-amber-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-gray-900">
+                            Booking #{b.id} · Equipment #{b.equipment_id}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                            AUTO-RELEASED
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Booker: User #{b.user_id} · Slot:{" "}
+                          {new Date(b.slot_start).toLocaleString()} to{" "}
+                          {new Date(b.slot_end).toLocaleTimeString()}
+                        </p>
+                        {b.decision_reason?.auto_release_reason && (
+                          <p className="text-[11px] text-amber-800 italic mt-0.5">
+                            "{b.decision_reason.auto_release_reason}"
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setReverseBookingItem(b);
+                          setReverseExplanation("");
+                        }}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                      >
+                        Reverse Auto-Release...
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Approve Modal ─────────────────────────────────────────────────── */}
         {approveItem && (
@@ -728,6 +1019,149 @@ export default function ManagerReviewQueue() {
                   className="px-5 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-sm"
                 >
                   {rejectSubmitting ? "Rejecting..." : "Confirm Rejection"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Resolve Incident Modal ────────────────────────────────────────── */}
+        {resolveIncidentItem && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl border border-gray-200 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-emerald-600" />
+                  Resolve Incident #{resolveIncidentItem.id}
+                </h3>
+                <button
+                  onClick={() => setResolveIncidentItem(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-600 space-y-3">
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-1">
+                  <div className="font-bold text-gray-900">
+                    {resolveIncidentItem.incident_type} · Severity: {resolveIncidentItem.severity}
+                  </div>
+                  <p className="text-gray-600">"{resolveIncidentItem.description}"</p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 text-xs mb-1">
+                    Manager Resolution Notes: <span className="text-rose-600">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="e.g. Spindle inspected by technician Roy; verified normal calibration; tool replaced from spare stock."
+                    value={resolveNotes}
+                    onChange={(e) => setResolveNotes(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-amber-900">
+                    <input
+                      type="checkbox"
+                      checked={resolveStrike}
+                      onChange={(e) => setResolveStrike(e.target.checked)}
+                      className="rounded border-gray-300 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                    />
+                    <span>Propose formal strike penalty for this incident</span>
+                  </label>
+                  <p className="text-[11px] text-amber-800">
+                    Human-in-the-loop: This creates a proposed strike notice that the user can contest.
+                  </p>
+
+                  {resolveStrike && (
+                    <input
+                      type="text"
+                      placeholder="Strike reason (e.g. Gross negligence operating lathe without guard)"
+                      value={resolveStrikeReason}
+                      onChange={(e) => setResolveStrikeReason(e.target.value)}
+                      className="w-full bg-white border border-amber-300 rounded-xl p-2.5 text-xs text-gray-800 focus:ring-2 focus:ring-amber-500"
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setResolveIncidentItem(null)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmResolveIncident}
+                  disabled={resolveSubmitting || !resolveNotes.trim()}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-sm"
+                >
+                  {resolveSubmitting ? "Resolving..." : "Mark as Resolved"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Reverse Auto-Release Modal ────────────────────────────────────── */}
+        {reverseBookingItem && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl border border-gray-200 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-indigo-600" />
+                  Reverse Auto-Release · Booking #{reverseBookingItem.id}
+                </h3>
+                <button
+                  onClick={() => setReverseBookingItem(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-600 space-y-3">
+                <p>
+                  Reversing this auto-release will reinstate the booking to active status, re-hold the user's credits, and dismiss any pending strike proposals associated with the release.
+                </p>
+
+                <div>
+                  <label className="block font-bold text-gray-700 text-xs mb-1">
+                    Manager Explanation / Rationale:
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Student experienced verified public transport delay; contacted lab attendant at 14:15."
+                    value={reverseExplanation}
+                    onChange={(e) => setReverseExplanation(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setReverseBookingItem(null)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReverseAutoRelease}
+                  disabled={reverseSubmitting}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-sm"
+                >
+                  {reverseSubmitting ? "Reinstating..." : "Confirm & Reinstate Booking"}
                 </button>
               </div>
             </div>
