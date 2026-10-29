@@ -152,7 +152,7 @@ def reset_clock(db: Session = Depends(get_db), current_user=Depends(get_manager_
     return ClockState(real_utc=real, app_now=demo_clock.app_now(), offset_seconds=0)
 
 
-# ── Seed ───────────────────────────────────────────────────────────────────────
+# ── Seed & Demo Reset ──────────────────────────────────────────────────────────
 
 @router.post("/seed")
 def seed_data(
@@ -163,4 +163,29 @@ def seed_data(
     from app.seed import run_seed  # lazy import to avoid circular deps
     result = run_seed(db, wipe=wipe)
     return result
+
+
+@router.post("/reset-demo")
+def reset_demo_database(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_manager_or_admin),
+):
+    """
+    Resets the demo database back to clean seed data.
+    Accessible to admins and managers for judges & demo resets.
+    """
+    from app.seed import run_seed
+    result = run_seed(db, wipe=True)
+    write_audit(
+        db,
+        entity_type="system",
+        entity_id=0,
+        action="DEMO_DATABASE_RESET",
+        payload={"wiped": True, "reset_by": current_user.email},
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        rationale=f"Demo database reset by {current_user.role} ({current_user.full_name}).",
+    )
+    db.commit()
+    return {"message": "Demo data successfully reset to clean seed state.", "details": result}
 

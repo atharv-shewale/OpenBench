@@ -84,3 +84,34 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
 def me(current_user: User = Depends(get_current_user)):
     return current_user
 
+
+@router.post("/demo-login/{role}", response_model=TokenResponse)
+def demo_login(role: str, db: Session = Depends(get_db)):
+    """
+    Convenient one-click login for hackathon judges & demo evaluators.
+    Supports: admin, owner, manager, user, apprentice, msme.
+    """
+    role_map = {
+        "admin": "platform.admin@openbench.in",
+        "owner": "dr.anita.desai@vidyasagar.ac.in",
+        "manager": "priya.sharma@vidyasagar.ac.in",
+        "user": "rahul.mondal@iti-jadavpur.ac.in",
+        "apprentice": "rahul.mondal@iti-jadavpur.ac.in",
+        "msme": "sneha.patil@patilprecision.com",
+    }
+    email = role_map.get(role.lower())
+    user = None
+    if email:
+        user = db.query(User).filter(User.email == email).first()
+
+    if not user:
+        target_role = "user" if role.lower() in ("apprentice", "msme") else role.lower()
+        user = db.query(User).filter(User.role == target_role).first()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"Demo user for role '{role}' not found.")
+
+    return TokenResponse(
+        access_token=create_access_token(user.id, user.role),
+        refresh_token=create_refresh_token(user.id),
+    )
+

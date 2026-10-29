@@ -15,42 +15,55 @@ import ResourceEditor from "./pages/ResourceEditor";
 import ManagerReviewQueue from "./pages/ManagerReviewQueue";
 import SessionCheckinCheckout from "./pages/SessionCheckinCheckout";
 import FairnessSimulator from "./pages/FairnessSimulator";
+import { LanguageProvider, useLanguage } from "./store/language";
+import JudgeModePanel from "./components/JudgeModePanel";
+import ImpactDashboard from "./components/ImpactDashboard";
 
 function Home() {
+  const { t } = useLanguage();
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-brand-50 via-white to-indigo-50/40">
-      <div className="text-center max-w-3xl px-4 py-16">
-        <span className="inline-block mb-3 px-3 py-1 bg-brand-50 border border-brand-200/80 text-brand-700 text-xs font-bold rounded-full uppercase tracking-wider">
-          48-Hour Open Innovation Hackathon
-        </span>
-        <h1 className="text-5xl sm:text-6xl font-black text-gray-900 tracking-tight leading-tight mb-4">
-          Open<span className="text-brand-600">Bench</span>
-        </h1>
-        <p className="text-xl text-gray-600 italic font-medium mb-4">
-          "Every bench, every hour — earning for science."
-        </p>
-        <p className="text-gray-500 text-base max-w-xl mx-auto mb-8 leading-relaxed">
-          Safely unlock underused college testing and fabrication labs for local MSMEs,
-          ITI apprentices, and startups using a verified, credit-based booking platform.
-        </p>
-        <div className="flex flex-wrap gap-4 justify-center">
-          <Link
-            to="/equipment"
-            className="bg-brand-600 text-white px-7 py-3.5 rounded-2xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-500/25"
-          >
-            Explore Equipment & Spaces
-          </Link>
-          <Link
-            to="/owner/resources"
-            className="bg-white border border-gray-300 text-gray-700 px-7 py-3.5 rounded-2xl font-bold hover:bg-gray-50 transition shadow-2xs"
-          >
-            Lab Manager Portal
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-indigo-50/40 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-12">
+        {/* Hero Section */}
+        <div className="text-center max-w-3xl mx-auto pt-6">
+          <span className="inline-block mb-3 px-3 py-1 bg-brand-50 border border-brand-200/80 text-brand-700 text-xs font-bold rounded-full uppercase tracking-wider">
+            {t("hackathonTag")}
+          </span>
+          <h1 className="text-5xl sm:text-6xl font-black text-gray-900 tracking-tight leading-tight mb-4">
+            Open<span className="text-brand-600">Bench</span>
+          </h1>
+          <p className="text-xl text-gray-600 italic font-medium mb-4">
+            {t("heroMotto")}
+          </p>
+          <p className="text-gray-500 text-base max-w-xl mx-auto mb-8 leading-relaxed">
+            {t("heroDescription")}
+          </p>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link
+              to="/equipment"
+              className="bg-brand-600 text-white px-7 py-3.5 rounded-2xl font-bold hover:bg-brand-700 transition shadow-lg shadow-brand-500/25"
+            >
+              {t("exploreButton")}
+            </Link>
+            <Link
+              to="/owner/resources"
+              className="bg-white border border-gray-300 text-gray-700 px-7 py-3.5 rounded-2xl font-bold hover:bg-gray-50 transition shadow-2xs"
+            >
+              {t("managerPortalButton")}
+            </Link>
+          </div>
         </div>
 
+        {/* ── JUDGE MODE LANDING PANEL (1-Click Login, 10-Step Journey, Reset Data) ── */}
+        <JudgeModePanel />
+
+        {/* ── IMPACT DASHBOARD (Idle Hours, Equipment Value, Cost Savings) ─── */}
+        <ImpactDashboard />
+
         {/* Feature Highlights */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-16 text-left">
-          <div className="bg-white/80 backdrop-blur-xs p-5 rounded-2xl border border-gray-200/80 shadow-2xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+          <div className="bg-white/80 backdrop-blur-xs p-6 rounded-3xl border border-gray-200/80 shadow-2xs">
             <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm mb-3">
               1
             </div>
@@ -60,7 +73,7 @@ function Home() {
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-xs p-5 rounded-2xl border border-gray-200/80 shadow-2xs">
+          <div className="bg-white/80 backdrop-blur-xs p-6 rounded-3xl border border-gray-200/80 shadow-2xs">
             <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-sm mb-3">
               2
             </div>
@@ -70,7 +83,7 @@ function Home() {
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-xs p-5 rounded-2xl border border-gray-200/80 shadow-2xs">
+          <div className="bg-white/80 backdrop-blur-xs p-6 rounded-3xl border border-gray-200/80 shadow-2xs">
             <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-sm mb-3">
               3
             </div>
@@ -657,24 +670,26 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Navbar />
-      <DemoClockControl />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/equipment" element={<EquipmentDiscovery />} />
-        <Route path="/equipment/:id" element={<EquipmentDetail />} />
-        <Route path="/owner/resources" element={<OwnerResourceList />} />
-        <Route path="/owner/resources/new" element={<ResourceEditor />} />
-        <Route path="/owner/resources/:id/edit" element={<ResourceEditor />} />
-        <Route path="/manager/review-queue" element={<ManagerReviewQueue />} />
-        <Route path="/bookings/:id/session" element={<SessionCheckinCheckout />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/fairness-simulator" element={<FairnessSimulator />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <Navbar />
+        <DemoClockControl />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/equipment" element={<EquipmentDiscovery />} />
+          <Route path="/equipment/:id" element={<EquipmentDetail />} />
+          <Route path="/owner/resources" element={<OwnerResourceList />} />
+          <Route path="/owner/resources/new" element={<ResourceEditor />} />
+          <Route path="/owner/resources/:id/edit" element={<ResourceEditor />} />
+          <Route path="/manager/review-queue" element={<ManagerReviewQueue />} />
+          <Route path="/bookings/:id/session" element={<SessionCheckinCheckout />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/fairness-simulator" element={<FairnessSimulator />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 }

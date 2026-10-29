@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
+import { useLanguage } from "../store/language";
 import NotificationBell from "./NotificationBell";
 import AuditIntegrityModal from "./AuditIntegrityModal";
 import {
@@ -15,10 +16,12 @@ import {
   X,
   ClipboardCheck,
   Scale,
+  Languages,
 } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
+  const { lang, changeLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
@@ -44,7 +47,7 @@ export default function Navbar() {
                 Open<span className="text-brand-600">Bench</span>
               </span>
               <span className="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full border border-brand-100">
-                Shared Labs
+                {t("sharedLabs")}
               </span>
             </div>
           </Link>
@@ -56,7 +59,7 @@ export default function Navbar() {
               className="flex items-center gap-1.5 text-gray-600 hover:text-brand-600 transition"
             >
               <Compass className="w-4 h-4" />
-              Discover Equipment
+              {t("discoverEquipment")}
             </Link>
 
             <Link
@@ -64,7 +67,7 @@ export default function Navbar() {
               className="flex items-center gap-1.5 text-gray-600 hover:text-brand-600 transition"
             >
               <Scale className="w-4 h-4 text-amber-600" />
-              Fairness Simulator
+              {t("fairnessSimulator")}
             </Link>
 
             {isOwnerOrManager && (
@@ -73,7 +76,7 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 text-gray-600 hover:text-brand-600 transition"
               >
                 <Layers className="w-4 h-4" />
-                Lab Inventory
+                {t("labInventory")}
               </Link>
             )}
 
@@ -83,7 +86,7 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 text-gray-600 hover:text-brand-600 transition"
               >
                 <ClipboardCheck className="w-4 h-4" />
-                Review Queue
+                {t("reviewQueue")}
               </Link>
             )}
 
@@ -95,7 +98,7 @@ export default function Navbar() {
                 title="Verify SHA-256 Hash Chain Integrity"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Verify Audit
+                {t("verifyAudit")}
               </button>
             )}
 
@@ -105,12 +108,43 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-semibold"
               >
                 <PlusCircle className="w-4 h-4" />
-                List Resource
+                {t("listResource")}
               </Link>
             )}
 
+            {/* Language Switcher Pill */}
+            <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200 text-[11px] font-bold">
+              <button
+                onClick={() => changeLanguage("en")}
+                className={`px-2 py-0.5 rounded-lg transition ${
+                  lang === "en" ? "bg-white text-gray-900 shadow-2xs" : "text-gray-500 hover:text-gray-900"
+                }`}
+                aria-label="Switch language to English"
+              >
+                EN
+              </button>
+              <button
+                onClick={() => changeLanguage("mr")}
+                className={`px-2 py-0.5 rounded-lg transition ${
+                  lang === "mr" ? "bg-white text-gray-900 shadow-2xs" : "text-gray-500 hover:text-gray-900"
+                }`}
+                aria-label="मराठी भाषेवर स्विच करा"
+              >
+                मराठी
+              </button>
+              <button
+                onClick={() => changeLanguage("hi")}
+                className={`px-2 py-0.5 rounded-lg transition ${
+                  lang === "hi" ? "bg-white text-gray-900 shadow-2xs" : "text-gray-500 hover:text-gray-900"
+                }`}
+                aria-label="हिंदी भाषा पर स्विच करें"
+              >
+                हिंदी
+              </button>
+            </div>
+
             {user ? (
-              <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+              <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
                 <NotificationBell />
 
                 <Link
@@ -118,12 +152,12 @@ export default function Navbar() {
                   className="flex items-center gap-1.5 text-gray-700 hover:text-brand-600 font-semibold"
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
+                  {t("dashboard")}
                 </Link>
 
                 <div className="flex items-center gap-1 text-xs font-semibold bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full border border-amber-200">
                   <Coins className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{user.credit_balance} cr</span>
+                  <span>{user.credit_balance} {t("welcomeCredits")}</span>
                 </div>
 
                 <div className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full font-medium uppercase tracking-wide">
@@ -132,25 +166,26 @@ export default function Navbar() {
 
                 <button
                   onClick={handleLogout}
-                  title="Sign out"
+                  title={t("signOut")}
                   className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 transition"
+                  aria-label="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+              <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
                 <Link
                   to="/login"
                   className="text-gray-700 hover:text-brand-600 font-semibold px-3 py-1.5"
                 >
-                  Sign In
+                  {t("signIn")}
                 </Link>
                 <Link
                   to="/register"
                   className="bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-700 transition shadow-sm shadow-brand-500/20"
                 >
-                  Get Started
+                  {t("register")}
                 </Link>
               </div>
             )}

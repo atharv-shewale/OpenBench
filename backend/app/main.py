@@ -18,7 +18,7 @@ from app.models import (  # noqa: F401  — ensure all models are registered
     Notification, ActionProposal, Strike, User, UserCredential, WaitlistEntry,
 )
 from app.database import Base
-from app.routers import auth, labs, equipment, bookings, proposals, audit, credits, admin, notifications, media, incidents, simulation
+from app.routers import auth, labs, equipment, bookings, proposals, audit, credits, admin, notifications, media, incidents, simulation, analytics
 from app.scheduler import start_scheduler, stop_scheduler
 
 
@@ -139,6 +139,7 @@ def create_app() -> FastAPI:
     app.include_router(media.router, prefix=api_prefix)
     app.include_router(incidents.router, prefix=api_prefix)
     app.include_router(simulation.router, prefix=api_prefix)
+    app.include_router(analytics.router, prefix=api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/api/health", tags=["health"])
