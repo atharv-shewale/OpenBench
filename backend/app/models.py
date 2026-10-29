@@ -240,7 +240,12 @@ class WaitlistEntry(Base):
     )
     desired_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     desired_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    # WAITING | NOTIFIED | EXPIRED | CONVERTED
+    purpose: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    priority_tier: Mapped[str] = mapped_column(String(20), nullable=False, default="STANDARD")
+    group_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    ranking_score: Mapped[float] = mapped_column(Integer, nullable=False, default=0) # Total calculated score
+    score_breakdown: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True) # Full factors for "Why this outcome?"
+    # WAITING | PROMOTED | NOTIFIED | EXPIRED | CONVERTED
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="WAITING")
     notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now)

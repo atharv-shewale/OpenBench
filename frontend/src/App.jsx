@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "./store/auth";
 import api from "./api/client";
 import Navbar from "./components/Navbar";
+import WhyThisOutcomeCard from "./components/WhyThisOutcomeCard";
 
 // Pages
 import EquipmentDiscovery from "./pages/EquipmentDiscovery";
@@ -285,11 +286,14 @@ function Register() {
 function Dashboard() {
   const { user } = useAuthStore();
   const [bookings, setBookings] = useState([]);
+  const [waitlist, setWaitlist] = useState([]);
   const [balance, setBalance] = useState(null);
+  const [selectedWhy, setSelectedWhy] = useState(null);
 
   useEffect(() => {
     if (!user) return;
     api.get("/bookings").then((r) => setBookings(r.data)).catch(() => {});
+    api.get("/bookings/waitlist").then((r) => setWaitlist(r.data)).catch(() => {});
     api.get("/credits/balance").then((r) => setBalance(r.data)).catch(() => {});
   }, [user]);
 
@@ -332,6 +336,71 @@ function Dashboard() {
               </div>
             )}
           </div>
+
+          {/* Active Waitlist & Allocation Queue */}
+          {waitlist.length > 0 && (
+            <div className="mt-8 pb-8 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center justify-between">
+                <span>My Waitlist Queue Entries</span>
+                <span className="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">
+                  Auto-promoted on cancellation
+                </span>
+              </h3>
+              <div className="space-y-4">
+                {waitlist.map((w) => (
+                  <div
+                    key={w.id}
+                    className="p-5 bg-gradient-to-r from-gray-50 to-indigo-50/20 border border-indigo-100 rounded-2xl space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-gray-900">
+                            Waitlist #{w.id} · Equipment #{w.equipment_id}
+                          </span>
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                            {w.priority_tier}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Desired Slot: {new Date(w.desired_start).toLocaleString()} to{" "}
+                          {new Date(w.desired_end).toLocaleTimeString()}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                            w.status === "PROMOTED"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                          }`}
+                        >
+                          {w.status}
+                        </span>
+                        <button
+                          onClick={() => setSelectedWhy(selectedWhy?.id === w.id ? null : w)}
+                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white border border-indigo-200 px-3 py-1.5 rounded-xl shadow-2xs transition"
+                        >
+                          {selectedWhy?.id === w.id ? "Hide Breakdown" : "Why this outcome?"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Explainer card */}
+                    {selectedWhy?.id === w.id && (
+                      <div className="pt-2">
+                        <WhyThisOutcomeCard
+                          breakdown={w.score_breakdown}
+                          rankingScore={w.ranking_score}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-8">
             <h3 className="font-bold text-gray-900 text-lg mb-4">My Lab Sessions</h3>

@@ -232,3 +232,4 @@ class TestCounterfactualExplainer:
         alt_sugg = [s for s in suggestions if s["type"] == "alternative_slot"]
         assert len(alt_sugg) > 0
         assert "Alternative slot open on" in alt_sugg[0]["message"]
+

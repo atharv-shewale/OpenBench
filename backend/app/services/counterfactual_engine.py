@@ -210,3 +210,4 @@ def find_alternative_slots(
                 continue
 
     return alternatives
+

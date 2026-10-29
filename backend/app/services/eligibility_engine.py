@@ -357,3 +357,4 @@ def evaluate_booking_eligibility(
     ))
 
     return evaluation
+

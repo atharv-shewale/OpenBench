@@ -11,6 +11,7 @@ Non-negotiables enforced:
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from math import ceil
 from typing import Any, Dict, List, Optional
 
@@ -123,6 +124,61 @@ def create_booking(
 
     # 1. Pure Eligibility Engine Check
     eval_result = evaluate_booking_eligibility(user_data, equipment_data, booking_req, now)
+
+    # 1b. Allocation Engine Constraints (Weekly caps, Active bookings limit, Advance window, Prime cooldown)
+    from app.services.allocation_engine import evaluate_allocation_constraints, is_prime_slot
+
+    # Count user's current active reservations
+    active_count = db.query(Booking).filter(
+        Booking.user_id == user.id,
+        Booking.status.in_(["PENDING", "APPROVED", "IN_PROGRESS"]),
+    ).count()
+
+    # User's recent completed/approved hours in last 7 days
+    seven_days_ago = now - timedelta(days=7)
+    recent_user_bookings = db.query(Booking).filter(
+        Booking.user_id == user.id,
+        Booking.status.in_(["COMPLETED", "IN_PROGRESS", "APPROVED"]),
+        Booking.slot_start >= seven_days_ago,
+    ).all()
+    recent_user_hours = sum((b.slot_end - b.slot_start).total_seconds() for b in recent_user_bookings) / 3600.0
+
+    recent_group_hours = 0.0
+    if group_name:
+        recent_group_bookings = db.query(Booking).filter(
+            Booking.group_name == group_name,
+            Booking.status.in_(["COMPLETED", "IN_PROGRESS", "APPROVED"]),
+            Booking.slot_start >= seven_days_ago,
+        ).all()
+        recent_group_hours = sum((b.slot_end - b.slot_start).total_seconds() for b in recent_group_bookings) / 3600.0
+
+    # Last prime slot on this equipment for this user
+    last_prime_booking = (
+        db.query(Booking)
+        .filter(
+            Booking.user_id == user.id,
+            Booking.equipment_id == equipment_id,
+            Booking.status.in_(["COMPLETED", "APPROVED", "IN_PROGRESS"]),
+        )
+        .order_by(Booking.slot_end.desc())
+        .first()
+    )
+    last_prime_slot_end = last_prime_booking.slot_end if last_prime_booking and is_prime_slot(last_prime_booking.slot_start, last_prime_booking.slot_end) else None
+
+    alloc_eval = evaluate_allocation_constraints(
+        current_time=now,
+        slot_start=slot_start,
+        slot_end=slot_end,
+        active_booking_count=active_count,
+        recent_user_hours=recent_user_hours,
+        recent_group_hours=recent_group_hours,
+        has_group=bool(group_name),
+        last_prime_slot_end=last_prime_slot_end,
+    )
+
+    if not alloc_eval["allowed"]:
+        eval_result.is_eligible = False
+        eval_result.reasons_failed.append(alloc_eval["first_rejection_reason"])
 
     # 2. Overlap Conflict Check
     conflict = next(
@@ -301,6 +357,11 @@ def reject_booking(
         entity_type="booking",
         entity_id=booking.id,
     )
+
+    # Auto-promote waitlist candidate for freed slot
+    from app.services.waitlist_service import auto_promote_waitlist_on_cancellation
+    auto_promote_waitlist_on_cancellation(db, booking)
+
     return booking
 
 
@@ -334,6 +395,11 @@ def cancel_booking(db: Session, booking_id: int, actor: User) -> Booking:
         entity_type="booking",
         entity_id=booking.id,
     )
+
+    # Auto-promote waitlist candidate for freed slot
+    from app.services.waitlist_service import auto_promote_waitlist_on_cancellation
+    auto_promote_waitlist_on_cancellation(db, booking)
+
     return booking
 
 

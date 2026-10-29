@@ -127,3 +127,4 @@ class TestBookingRequestFlow:
         alt_slots = [c for c in detail["counterfactuals"] if c["type"] == "alternative_slot"]
         assert len(alt_slots) > 0
         assert "Alternative slot open on" in alt_slots[0]["message"]
+

@@ -9,8 +9,10 @@ from app.models import Booking, ConditionReport, Incident, User
 from app.schemas import (
     BookingCreate, BookingManagerAction, BookingOut, CheckoutResponse,
     ConditionReportCreate, ConditionReportOut, IncidentCreate, IncidentOut,
+    WaitlistCreate, WaitlistOut,
 )
-from app.services import booking_service
+from app.models import Booking, ConditionReport, Incident, User, WaitlistEntry
+from app.services import booking_service, waitlist_service
 from app.services.audit_service import write_audit
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -203,4 +205,65 @@ def report_incident(
     db.commit()
     db.refresh(inc)
     return inc
+
+
+# ── Waitlist ──────────────────────────────────────────────────────────────────
+
+@router.post("/waitlist", response_model=WaitlistOut, status_code=201)
+def add_to_waitlist(
+    payload: WaitlistCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    entry = waitlist_service.join_waitlist(
+        db=db,
+        user=current_user,
+        equipment_id=payload.equipment_id,
+        desired_start=payload.desired_start,
+        desired_end=payload.desired_end,
+        purpose=payload.purpose,
+        priority_tier=payload.priority_tier,
+        group_name=payload.group_name,
+    )
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.get("/waitlist", response_model=List[WaitlistOut])
+def list_waitlist(
+    equipment_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = db.query(WaitlistEntry)
+    if current_user.role == "user":
+        q = q.filter(WaitlistEntry.user_id == current_user.id)
+    if equipment_id:
+        q = q.filter(WaitlistEntry.equipment_id == equipment_id)
+    return q.order_by(WaitlistEntry.ranking_score.desc()).all()
+
+
+@router.get("/waitlist/{waitlist_id}/why", response_model=dict)
+def explain_waitlist_decision(
+    waitlist_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns the 'Why this outcome?' breakdown for a waitlist placement or promotion.
+    """
+    entry = db.query(WaitlistEntry).filter(WaitlistEntry.id == waitlist_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Waitlist entry not found.")
+    if current_user.role == "user" and entry.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    return {
+        "waitlist_id": entry.id,
+        "equipment_id": entry.equipment_id,
+        "status": entry.status,
+        "ranking_score": entry.ranking_score,
+        "score_breakdown": entry.score_breakdown or {},
+    }
 

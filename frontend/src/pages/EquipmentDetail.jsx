@@ -207,11 +207,10 @@ export default function EquipmentDetail() {
                   {equipment.type}
                 </span>
                 <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                    equipment.status === "available"
+                  className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${equipment.status === "available"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                       : "bg-rose-50 text-rose-700 border border-rose-200"
-                  }`}
+                    }`}
                 >
                   {equipment.status}
                 </span>
@@ -528,8 +527,8 @@ export default function EquipmentDetail() {
                         {bookingSubmitting
                           ? "Verifying Request..."
                           : user
-                          ? `Submit Booking Request (${bookingHours * equipment.credit_per_hour + equipment.deposit_credits} cr)`
-                          : "Sign in to Book"}
+                            ? `Submit Booking Request (${bookingHours * equipment.credit_per_hour + equipment.deposit_credits} cr)`
+                            : "Sign in to Book"}
                       </button>
                     </div>
                   </form>

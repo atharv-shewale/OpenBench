@@ -252,6 +252,9 @@ class WaitlistCreate(BaseModel):
     equipment_id: int
     desired_start: datetime
     desired_end: datetime
+    purpose: Optional[str] = None
+    priority_tier: str = "STANDARD"
+    group_name: Optional[str] = None
 
 
 class WaitlistOut(BaseModel):
@@ -260,7 +263,13 @@ class WaitlistOut(BaseModel):
     equipment_id: int
     desired_start: datetime
     desired_end: datetime
+    purpose: Optional[str] = None
+    priority_tier: str = "STANDARD"
+    group_name: Optional[str] = None
+    ranking_score: float = 0.0
+    score_breakdown: Optional[Dict[str, Any]] = None
     status: str
+    notified_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
