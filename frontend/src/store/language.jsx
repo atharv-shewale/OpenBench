@@ -34,9 +34,10 @@ export const translations = {
     equipmentValue: "Equipment Value Utilised",
     estimatedSavings: "Estimated Cost Saved",
     supportedParticipants: "MSMEs & Apprentices Supported",
-    estimateNotice: "ALL METRICS LABELLED AS ESTIMATES",
+    estimateNotice: "ALL METRICS LABELLED AS ILLUSTRATIVE ESTIMATES",
     estimateDisclaimer:
-      "Estimated savings and equipment values are benchmarked against standard commercial NABL precision testing rates (₹3,500/hr) vs OpenBench credit pricing.",
+      "Illustrative estimates based on academic lab capacity models: assumes 65% baseline idle rate outside teaching hours, commercial NABL testing rates of ₹3,500/hr vs OpenBench educational credit pricing (₹300/hr), and ₹3.1 Cr aggregate equipment procurement valuation across Kolhapur institutions.",
+
 
     // Judge Journey Steps
     journeyTitle: "Try the Full 10-Step Journey",
@@ -101,9 +102,9 @@ export const translations = {
     equipmentValue: "वापरलेले उपकरण मूल्य",
     estimatedSavings: "अंदाजे केलेली बचत",
     supportedParticipants: "लघुउद्योग आणि प्रशिक्षणार्थी",
-    estimateNotice: "सर्व आकडेवारी अंदाजे म्हणून दर्शविली आहे",
+    estimateNotice: "सर्व आकडेवारी स्पष्टीकरणात्मक अंदाज म्हणून दर्शविली आहे",
     estimateDisclaimer:
-      "अंदाजे बचत आणि उपकरणांचे मूल्य व्यावसायिक NABL चाचणी दर (₹३,५००/तास) विरुद्ध ओपनबेंच क्रेडिट दरावर आधारित आहेत.",
+      "शैक्षणिक प्रयोगशाळा क्षमता मॉडेलवर आधारित स्पष्टीकरणात्मक अंदाज: शिकवण्याच्या वेळेबाहेर ६५% निष्क्रिय दर, व्यावसायिक NABL दर (₹३,५००/तास) वि. ओपनबेंच क्रेडिट दर (₹३००/तास) आणि ₹३.१ कोटींची एकत्रित उपकरणे गृहीत धरली आहेत.",
 
     // Judge Journey Steps
     journeyTitle: "पूर्ण १०-टप्प्यांचा प्रवास करून पहा",
@@ -168,9 +169,9 @@ export const translations = {
     equipmentValue: "उपयोग किया गया उपकरण मूल्य",
     estimatedSavings: "अनुमानित कुल बचत",
     supportedParticipants: "लाभान्वित एमएसएमई व छात्र",
-    estimateNotice: "सभी आंकड़े अनुमानित बेंचमार्क हैं",
+    estimateNotice: "सभी आंकड़े उदाहरणात्मक अनुमान के रूप में दर्शाए गए हैं",
     estimateDisclaimer:
-      "अनुमानित बचत और उपकरण मूल्य मानक वाणिज्यिक NABL परीक्षण दरों (₹3,500/घंटा) बनाम ओपनबेंच क्रेडिट मूल्य पर आधारित हैं।",
+      "शैक्षणिक प्रयोगशाला क्षमता मॉडल पर आधारित उदाहरणात्मक अनुमान: शिक्षण समय के बाद 65% निष्क्रियता दर, वाणिज्यिक NABL दर (₹3,500/घंटा) बनाम ओपनबेंच क्रेडिट दर (₹300/घंटा), और ₹3.1 करोड़ का कुल उपकरण मूल्य माना गया है।",
 
     // Judge Journey Steps
     journeyTitle: "संपूर्ण 10-चरणीय यात्रा का अनुभव करें",

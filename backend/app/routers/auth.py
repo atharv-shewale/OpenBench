@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_demo_mode
 from app.models import User
 from app.schemas import TokenResponse, UserOut, UserRegister, RefreshRequest
 from app.services.auth_service import (
@@ -86,10 +86,15 @@ def me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/demo-login/{role}", response_model=TokenResponse)
-def demo_login(role: str, db: Session = Depends(get_db)):
+def demo_login(
+    role: str,
+    db: Session = Depends(get_db),
+    _=Depends(require_demo_mode),
+):
     """
     Convenient one-click login for hackathon judges & demo evaluators.
     Supports: admin, owner, manager, user, apprentice, msme.
+    Gated by DEMO_MODE environment variable.
     """
     role_map = {
         "admin": "platform.admin@openbench.in",

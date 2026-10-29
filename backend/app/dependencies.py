@@ -76,3 +76,18 @@ def get_owner_or_above(user=Depends(require_roles("owner", "manager", "admin")))
 def get_any_authenticated(user=Depends(get_current_user)):
     return user
 
+
+def is_demo_mode() -> bool:
+    """Check if DEMO_MODE is active (defaults to True for demo/hackathon environments)."""
+    return os.getenv("DEMO_MODE", "true").lower() in ("true", "1", "yes")
+
+
+def require_demo_mode():
+    """Dependency that blocks demo endpoints if DEMO_MODE is explicitly disabled."""
+    if not is_demo_mode():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="DEMO_MODE is disabled in this environment. Demo logins, database resets, and synthetic clock controls are blocked.",
+        )
+
+

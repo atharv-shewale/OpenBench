@@ -12,6 +12,10 @@ Supports all notification events:
 from __future__ import annotations
 
 import logging
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -29,12 +33,38 @@ def send_email(
     action_type: str,
 ) -> bool:
     """
-    Dispatches or logs an email notification to the user.
-    In demo / testing / development mode, logs the full email message payload.
-    Can be connected to SMTP / SendGrid / Postmark in production via env vars.
+    Dispatches an email notification.
+    If SMTP credentials (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD)
+    are provided in environment, attempts delivery via SMTP.
+    Otherwise, falls back to structured logging (simulated delivery) for hackathon demo & audit.
     """
+    smtp_host = os.getenv("SMTP_HOST")
+    if smtp_host:
+        try:
+            port = int(os.getenv("SMTP_PORT", "587"))
+            user = os.getenv("SMTP_USER", "")
+            password = os.getenv("SMTP_PASSWORD", "")
+            sender = os.getenv("EMAIL_FROM", "notifications@openbench.in")
+
+            msg = MIMEMultipart()
+            msg["From"] = sender
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain"))
+
+            with smtplib.SMTP(smtp_host, port, timeout=5) as server:
+                if os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes"):
+                    server.starttls()
+                if user and password:
+                    server.login(user, password)
+                server.send_message(msg)
+            logger.info("[EMAIL SENT via SMTP] To: %s | Subject: %s | Action: %s", to_email, subject, action_type)
+            return True
+        except Exception as exc:
+            logger.warning("[EMAIL SMTP FAILED - FALLBACK TO SIMULATED LOG] %s", exc)
+
     logger.info(
-        "[EMAIL DISPATCH] To: %s | Subject: %s | Type: %s | Body: %s",
+        "[EMAIL SIMULATED / AUDIT DISPATCH] To: %s | Subject: %s | Type: %s | Body: %s",
         to_email,
         subject,
         action_type,

@@ -9,6 +9,7 @@ import {
   ChevronUp,
   ChevronDown,
   Calendar,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function DemoClockControl() {
@@ -16,6 +17,7 @@ export default function DemoClockControl() {
   const [clock, setClock] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmAdvance, setConfirmAdvance] = useState(null);
 
   const fetchClock = async () => {
     try {
@@ -104,14 +106,14 @@ export default function DemoClockControl() {
 
         {/* Expanded Controls for Judges & Admins */}
         {expanded && (
-          <div className="p-4 border-t border-slate-800 space-y-3 bg-slate-950/70 w-72">
-            <div className="text-[11px] text-slate-300 leading-snug">
-              Fast-forward demo clock to test auto-releases, grace periods, overdue returns, and reminders.
+          <div className="p-4 border-t border-slate-800 space-y-3 bg-slate-950/70 w-80">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 leading-snug">
+              ⚠️ <strong>Warning:</strong> Advancing the demo clock accelerates simulated time for all users, triggering auto-releases of unverified bookings past the 20-minute grace period and staging strike proposals. Real UTC is not modified.
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => handleAdvance(3600, "1 Hour")}
+                onClick={() => setConfirmAdvance({ seconds: 3600, label: "+1 Hour" })}
                 disabled={loading}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm"
               >
@@ -119,7 +121,7 @@ export default function DemoClockControl() {
               </button>
 
               <button
-                onClick={() => handleAdvance(86400, "1 Day")}
+                onClick={() => setConfirmAdvance({ seconds: 86400, label: "+1 Day" })}
                 disabled={loading}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm"
               >
@@ -143,6 +145,55 @@ export default function DemoClockControl() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog for Advancing Clock */}
+      {confirmAdvance && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs text-gray-900">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-indigo-200 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                <FastForward className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-gray-900">
+                  Advance Demo Clock ({confirmAdvance.label})
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Fast-forwarding simulated time accelerates booking lifecycles.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-snug">
+              ⚠️ <strong>Notice:</strong> This will execute an immediate on-demand ghost-booking sweep, automatically releasing slots without check-in or telemetry after the 20-minute grace window.
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setConfirmAdvance(null)}
+                disabled={loading}
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const s = confirmAdvance.seconds;
+                  const l = confirmAdvance.label;
+                  setConfirmAdvance(null);
+                  handleAdvance(s, l);
+                }}
+                disabled={loading}
+                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition inline-flex items-center gap-1.5"
+              >
+                <FastForward className="w-3.5 h-3.5" /> Confirm Advance
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -28,7 +28,7 @@ Concurrently:
 
 ---
 
-## 3. Empirical Research Evidence & Market Need
+## 3. Field Research Evidence & Market Need
 
 - **Capital Equipment Underutilisation**: According to national surveys of technical education laboratories, tier-2 and tier-3 engineering college fabrication and testing machinery operates under 22 hours per week out of a potential 60-hour working week.
 - **Economic Tariff Barriers**: NABL-accredited commercial testing laboratories mandate minimum invoice sizes and fixed sample batches, making individual specimen iterations economically prohibitive for early-stage startups and student inventors.
@@ -150,7 +150,7 @@ sequenceDiagram
 ### D. Manager Review Queue & Communications
 - **Granular Review Dashboard**: Displays candidate history, safety credentials, past no-show record, and prime-slot indicators.
 - **Manager Actions**: Approve, Reject (mandatory plain-language rationale required), or Move to Waitlist. Lab owners possess supreme override authority.
-- **In-App & Email Notifications**: Automated alerts for approvals, rejections, auto-releases, waitlist promotions, and overdue notices.
+- **In-App & Email Notifications**: Automated alerts for approvals, rejections, auto-releases, waitlist promotions, and overdue notices. In-app notifications are live with unread counters; outbound email dispatch is simulated via structured audit logging with optional SMTP/Resend environment variable configuration.
 
 ### E. QR Check-In, Return & Advisory Computer Vision
 - **Physical QR Handover**: Verifies user identity and confirms timing is within the check-in window.
@@ -182,7 +182,7 @@ sequenceDiagram
 ### I. Judge Mode & Multilingual Accessibility
 - **Judge Mode Panel**: One-click authentication for 5 roles with instant JWT injection.
 - **Interactive Checklist Banner**: 10 deep-linked stages covering the full user journey.
-- **Economic Impact Dashboard**: Quantifies idle hours unlocked, capital equipment value utilised, and estimated rupees saved versus commercial testing tariffs.
+- **Economic Impact Dashboard**: Displays illustrative estimates of idle hours unlocked, capital equipment value utilised, and rupees saved versus commercial NABL tariffs (benchmarked with explicit assumptions detailed in UI tooltips).
 - **Multilingual Support**: English, Marathi (मराठी), and Hindi (हिंदी).
 - **Accessibility**: High-contrast ratios, keyboard focus indicators, and semantic ARIA tags.
 

@@ -16,6 +16,7 @@ import {
   Award,
   Layers,
   ArrowRight,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function JudgeModePanel() {
@@ -27,6 +28,7 @@ export default function JudgeModePanel() {
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState(null);
   const [loginLoading, setLoginLoading] = useState(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [completedSteps, setCompletedSteps] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("openbench_judge_steps") || "{}");
@@ -61,7 +63,7 @@ export default function JudgeModePanel() {
   };
 
   const handleResetDemoData = async () => {
-    if (!window.confirm("Reset OpenBench database back to pristine initial seed state?")) return;
+    setShowResetConfirm(false);
     setResetting(true);
     try {
       await api.post("/admin/reset-demo");
@@ -134,9 +136,13 @@ export default function JudgeModePanel() {
         </div>
 
         <div className="flex items-center gap-3 self-end sm:self-auto">
+          <span className="hidden lg:inline text-[11px] text-rose-200/80 font-medium">
+            ⚠️ Wipes active sessions & restores default seed
+          </span>
+
           {/* Reset Demo Button */}
           <button
-            onClick={handleResetDemoData}
+            onClick={() => setShowResetConfirm(true)}
             disabled={resetting}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-xs transition"
           >
@@ -263,6 +269,51 @@ export default function JudgeModePanel() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Dialog Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-gray-900">
+                  Confirm Demo Database Reset
+                </h3>
+                <p className="text-xs text-rose-800 font-medium leading-relaxed">
+                  ⚠️ <strong>Warning:</strong> This action will permanently wipe all active bookings, QR check-in records, uploaded before/after condition inspection photos, strike proposals, and cryptographic audit log entries.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-snug">
+              The platform will be re-seeded to factory demo state with default accounts for Panchganga Institute of Technology, Sahyadri Polytechnic, ITI Shiroli, and Patil Precision Components. <strong>This cannot be undone.</strong>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={resetting}
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetDemoData}
+                disabled={resetting}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition inline-flex items-center gap-1.5"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${resetting ? "animate-spin" : ""}`} />
+                {resetting ? "Resetting..." : "Confirm Reset (Wipe & Restore)"}
+              </button>
             </div>
           </div>
         </div>

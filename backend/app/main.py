@@ -147,6 +147,7 @@ def create_app() -> FastAPI:
     def health():
         from app.clock import app_now
         from app.database import SessionLocal
+        from app.dependencies import is_demo_mode
         from sqlalchemy import text
         db_ok = True
         try:
@@ -160,6 +161,7 @@ def create_app() -> FastAPI:
                 "status": "ok" if db_ok else "degraded",
                 "service": "openbench-api",
                 "database": "connected" if db_ok else "unreachable",
+                "demo_mode": is_demo_mode(),
                 "app_now": app_now().isoformat(),
                 "keep_alive": True,
             }),

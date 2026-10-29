@@ -38,6 +38,14 @@ OpenBench features a dedicated **Judge Mode** landing banner with **1-click auth
 | **Apprentice / Student** | Rahul Mondal | `rahul.mondal@iti-shiroli.ac.in` | `User@123` | 100 Credits, Govt ITI Shiroli (Kolhapur), first-time boost |
 | **MSME Founder** | Sneha Patil | `sneha.patil@patilprecision-mfg.in` | `User@123` | 150 Credits, Patil Precision Components (Kolhapur) |
 
+> [!NOTE]
+> **DEMO_MODE Gate**: All demo endpoints (`/api/auth/demo-login/{role}`, `/api/admin/reset-demo`, and `/api/admin/clock/*`) are gated behind `DEMO_MODE=true` (enabled by default). In production deployments, setting `DEMO_MODE=false` strictly disables and returns HTTP 403 on all demo endpoints.
+>
+> **Email Delivery Status**: In-app notifications are 100% live. Outbound email dispatch is **simulated** by default via structured logging to standard output and audit logs. Real outbound SMTP/Resend delivery is supported by setting `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASSWORD` in your environment.
+>
+> **Collective Impact Figures**: All metrics displayed on the Impact Dashboard are **illustrative estimates** benchmarked against commercial NABL testing rates (₹3,500/hr) vs educational credit rates (₹300/hr).
+
+
 ---
 
 ## 🏛️ System Architecture

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import clock as demo_clock
 from app.database import get_db
-from app.dependencies import get_admin, get_manager_or_admin
+from app.dependencies import get_admin, get_manager_or_admin, require_demo_mode
 from app.models import LabMembership, User
 from app.schemas import (
     ClockAdvance, ClockState, LabMembershipCreate,
@@ -117,6 +117,7 @@ def advance_clock(
     payload: ClockAdvance,
     db: Session = Depends(get_db),
     current_user=Depends(get_manager_or_admin),
+    _=Depends(require_demo_mode),
 ):
     new_offset = demo_clock.advance_clock(payload.seconds)
     # Trigger on-demand ghost-booking auto-release upon clock advance
@@ -142,7 +143,11 @@ def advance_clock(
 
 
 @router.post("/clock/reset", response_model=ClockState)
-def reset_clock(db: Session = Depends(get_db), current_user=Depends(get_manager_or_admin)):
+def reset_clock(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_manager_or_admin),
+    _=Depends(require_demo_mode),
+):
     demo_clock.reset_clock()
     write_audit(
         db,
@@ -176,6 +181,7 @@ def seed_data(
 def reset_demo_database(
     db: Session = Depends(get_db),
     current_user=Depends(get_manager_or_admin),
+    _=Depends(require_demo_mode),
 ):
     """
     Resets the demo database back to clean seed data.
