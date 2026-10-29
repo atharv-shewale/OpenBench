@@ -144,3 +144,4 @@ def resolve_incident(
     db.commit()
     db.refresh(inc)
     return inc
+

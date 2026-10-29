@@ -1,16 +1,19 @@
 """Bookings router — full CRUD + state transitions."""
+import csv
+import io
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Booking, ConditionReport, Incident, User, WaitlistEntry
+from app.models import AuditLog, Booking, ConditionReport, Equipment, Incident, User, WaitlistEntry
 from app.schemas import (
     BookingCreate, BookingExtensionRequest, BookingManagerAction, BookingOut, CheckoutResponse,
     ConditionReportCreate, ConditionReportOut, IncidentCreate, IncidentOut,
     ReviewQueueItem, WaitlistCreate, WaitlistOut,
     QRCheckInRequest, QRCheckOutRequest, SideBySideConditionComparison,
+    BookingTimelineItem, BookingTimelineOut,
 )
 from app.services import booking_service, waitlist_service, notification_service
 from app.services.audit_service import write_audit
@@ -621,4 +624,111 @@ def report_incident(
     db.commit()
     db.refresh(inc)
     return inc
+
+
+# ── Shared Transaction Timeline ───────────────────────────────────────────────
+
+@router.get("/{booking_id}/timeline", response_model=BookingTimelineOut)
+def get_booking_timeline(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns the complete hash-chained audit transaction timeline for a booking.
+    Visible to both parties: the booking user and lab managers/owners/admins.
+    """
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    if current_user.role == "user" and booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot access timeline for another user's booking.")
+
+    # Find all audit entries related to this booking
+    entries = db.query(AuditLog).order_by(AuditLog.id.asc()).all()
+    booking_entries = []
+    for e in entries:
+        is_match = False
+        if e.entity_type == "booking" and e.entity_id == booking_id:
+            is_match = True
+        elif isinstance(e.payload, dict) and e.payload.get("booking_id") == booking_id:
+            is_match = True
+
+        if is_match:
+            booking_entries.append(e)
+
+    actor_ids = {e.actor_id for e in booking_entries if e.actor_id}
+    users_by_id = {u.id: u for u in db.query(User).filter(User.id.in_(actor_ids)).all()} if actor_ids else {}
+
+    booker = db.query(User).filter(User.id == booking.user_id).first()
+    equipment = db.query(Equipment).filter(Equipment.id == booking.equipment_id).first()
+
+    items = []
+    for e in booking_entries:
+        actor_user = users_by_id.get(e.actor_id)
+        actor_name = actor_user.full_name if actor_user else ("System Engine" if e.actor_id is None else f"User #{e.actor_id}")
+        
+        rationale = e.rationale
+        if not rationale and isinstance(e.payload, dict):
+            rationale = e.payload.get("reason") or e.payload.get("explanation") or e.payload.get("description")
+
+        items.append(BookingTimelineItem(
+            id=e.id,
+            timestamp=e.created_at,
+            actor_id=e.actor_id,
+            actor_name=actor_name,
+            actor_role=e.actor_role or ("system" if e.actor_id is None else "unknown"),
+            action=e.action,
+            rationale=rationale,
+            payload=e.payload or {},
+            prev_hash=e.prev_hash,
+            hash=e.hash,
+        ))
+
+    return BookingTimelineOut(
+        booking_id=booking.id,
+        user_id=booking.user_id,
+        user_name=booker.full_name if booker else None,
+        equipment_id=booking.equipment_id,
+        equipment_name=equipment.name if equipment else None,
+        items=items,
+    )
+
+
+@router.get("/{booking_id}/timeline/export.csv")
+def export_booking_timeline_csv(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Exports the shared transaction timeline for a single booking as CSV.
+    """
+    timeline = get_booking_timeline(booking_id=booking_id, db=db, current_user=current_user)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "audit_id", "timestamp", "action", "actor_name", "actor_role",
+        "actor_id", "reason_rationale", "prev_hash", "hash",
+    ])
+    for item in timeline.items:
+        writer.writerow([
+            item.id,
+            item.timestamp.isoformat(),
+            item.action,
+            item.actor_name or "",
+            item.actor_role or "",
+            item.actor_id or "",
+            item.rationale or "",
+            item.prev_hash,
+            item.hash,
+        ])
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=booking_{booking_id}_timeline.csv"},
+    )
 

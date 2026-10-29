@@ -152,3 +152,4 @@ export default function IncidentReportingModal({ bookingId, equipmentName, isOpe
     </div>
   );
 }
+

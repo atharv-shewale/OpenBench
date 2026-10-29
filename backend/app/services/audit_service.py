@@ -100,6 +100,7 @@ def verify_chain(db: Session) -> Dict[str, Any]:
                 "broken_at_id": entry.id,
                 "first_entry_id": entries[0].id,
                 "last_entry_id": entries[-1].id,
+                "head_hash": entries[-1].hash,
             }
         # 2. Recompute and verify the row's own hash
         expected_hash = _compute_hash(
@@ -113,6 +114,7 @@ def verify_chain(db: Session) -> Dict[str, Any]:
                 "broken_at_id": entry.id,
                 "first_entry_id": entries[0].id,
                 "last_entry_id": entries[-1].id,
+                "head_hash": entries[-1].hash,
             }
         expected_prev = entry.hash
 
@@ -121,5 +123,6 @@ def verify_chain(db: Session) -> Dict[str, Any]:
         "total_entries": len(entries),
         "first_entry_id": entries[0].id,
         "last_entry_id": entries[-1].id,
+        "head_hash": entries[-1].hash,
     }
 

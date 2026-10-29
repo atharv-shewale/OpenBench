@@ -265,3 +265,4 @@ def contest_proposal(
     db.commit()
     db.refresh(proposal)
     return proposal
+

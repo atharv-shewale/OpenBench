@@ -334,3 +334,4 @@ class TestUsageSignalAndAutoReleaseFlow:
         rst_resp = client.post("/api/admin/clock/reset", headers=auth_headers(token_mgr))
         assert rst_resp.status_code == 200
         assert rst_resp.json()["offset_seconds"] == 0
+

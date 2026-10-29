@@ -14,6 +14,7 @@ import OwnerResourceList from "./pages/OwnerResourceList";
 import ResourceEditor from "./pages/ResourceEditor";
 import ManagerReviewQueue from "./pages/ManagerReviewQueue";
 import SessionCheckinCheckout from "./pages/SessionCheckinCheckout";
+import FairnessSimulator from "./pages/FairnessSimulator";
 
 function Home() {
   return (
@@ -671,6 +672,7 @@ export default function App() {
         <Route path="/manager/review-queue" element={<ManagerReviewQueue />} />
         <Route path="/bookings/:id/session" element={<SessionCheckinCheckout />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/fairness-simulator" element={<FairnessSimulator />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

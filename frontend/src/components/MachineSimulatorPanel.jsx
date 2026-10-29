@@ -191,3 +191,4 @@ export default function MachineSimulatorPanel({ equipmentId, equipmentName }) {
     </div>
   );
 }
+

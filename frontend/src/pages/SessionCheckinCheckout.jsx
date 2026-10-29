@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/auth";
 import SideBySideConditionViewer from "../components/SideBySideConditionViewer";
 import MachineSimulatorPanel from "../components/MachineSimulatorPanel";
 import IncidentReportingModal from "../components/IncidentReportingModal";
+import BookingTransactionTimeline from "../components/BookingTransactionTimeline";
 import {
   QrCode,
   ShieldCheck,
@@ -546,6 +547,11 @@ export default function SessionCheckinCheckout() {
               <SideBySideConditionViewer bookingId={booking.id} />
             </div>
           )}
+        </div>
+
+        {/* ── SHARED TRANSACTION TIMELINE (AUDIT TRAIL) ──────────────────────── */}
+        <div className="mt-8">
+          <BookingTransactionTimeline bookingId={booking.id} />
         </div>
       </div>
 

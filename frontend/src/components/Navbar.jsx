@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import NotificationBell from "./NotificationBell";
+import AuditIntegrityModal from "./AuditIntegrityModal";
 import {
   Compass,
   LayoutDashboard,
@@ -13,12 +14,14 @@ import {
   Menu,
   X,
   ClipboardCheck,
+  Scale,
 } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
 
   const isOwnerOrManager = user && ["owner", "manager", "admin"].includes(user.role);
 
@@ -56,6 +59,14 @@ export default function Navbar() {
               Discover Equipment
             </Link>
 
+            <Link
+              to="/fairness-simulator"
+              className="flex items-center gap-1.5 text-gray-600 hover:text-brand-600 transition"
+            >
+              <Scale className="w-4 h-4 text-amber-600" />
+              Fairness Simulator
+            </Link>
+
             {isOwnerOrManager && (
               <Link
                 to="/owner/resources"
@@ -74,6 +85,18 @@ export default function Navbar() {
                 <ClipboardCheck className="w-4 h-4" />
                 Review Queue
               </Link>
+            )}
+
+            {isOwnerOrManager && (
+              <button
+                type="button"
+                onClick={() => setShowAuditModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl transition shadow-2xs"
+                title="Verify SHA-256 Hash Chain Integrity"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Verify Audit
+              </button>
             )}
 
             {isOwnerOrManager && (
@@ -155,6 +178,13 @@ export default function Navbar() {
           >
             Discover Equipment
           </Link>
+          <Link
+            to="/fairness-simulator"
+            onClick={() => setMobileOpen(false)}
+            className="block px-3 py-2 rounded-lg text-amber-700 hover:bg-amber-50 font-bold"
+          >
+            Fairness Simulator
+          </Link>
           {isOwnerOrManager && (
             <>
               <Link
@@ -219,6 +249,12 @@ export default function Navbar() {
           )}
         </div>
       )}
+
+      {/* Cryptographic Audit Integrity Verification Modal */}
+      <AuditIntegrityModal
+        isOpen={showAuditModal}
+        onClose={() => setShowAuditModal(false)}
+      />
     </nav>
   );
 }

@@ -503,6 +503,29 @@ class ChainVerifyResult(BaseModel):
     first_entry_id: Optional[int] = None
     last_entry_id: Optional[int] = None
     broken_at_id: Optional[int] = None
+    head_hash: Optional[str] = None
+
+
+class BookingTimelineItem(BaseModel):
+    id: int
+    timestamp: datetime
+    actor_id: Optional[int] = None
+    actor_name: Optional[str] = None
+    actor_role: Optional[str] = None
+    action: str
+    rationale: Optional[str] = None
+    payload: Dict[str, Any]
+    prev_hash: str
+    hash: str
+
+
+class BookingTimelineOut(BaseModel):
+    booking_id: int
+    user_id: int
+    user_name: Optional[str] = None
+    equipment_id: int
+    equipment_name: Optional[str] = None
+    items: List[BookingTimelineItem]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
