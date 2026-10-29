@@ -18,7 +18,7 @@ from app.models import (  # noqa: F401  — ensure all models are registered
     Notification, ActionProposal, Strike, User, UserCredential, WaitlistEntry,
 )
 from app.database import Base
-from app.routers import auth, labs, equipment, bookings, proposals, audit, credits, admin, notifications
+from app.routers import auth, labs, equipment, bookings, proposals, audit, credits, admin, notifications, media
 from app.scheduler import start_scheduler, stop_scheduler
 
 
@@ -26,6 +26,7 @@ from app.scheduler import start_scheduler, stop_scheduler
 async def lifespan(app: FastAPI):
     # ── startup ──────────────────────────────────────────────────────────────
     Base.metadata.create_all(bind=engine)
+    _migrate_columns()
 
     if os.getenv("AUTO_SEED", "false").lower() == "true":
         _auto_seed()
@@ -36,6 +37,23 @@ async def lifespan(app: FastAPI):
 
     # ── shutdown ─────────────────────────────────────────────────────────────
     stop_scheduler()
+
+
+def _migrate_columns() -> None:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            res = conn.execute(text("PRAGMA table_info(condition_reports)"))
+            cols = {row[1] for row in res.fetchall()}
+            if "checklist_json" not in cols:
+                conn.execute(text("ALTER TABLE condition_reports ADD COLUMN checklist_json JSON"))
+            if "diff_result" not in cols:
+                conn.execute(text("ALTER TABLE condition_reports ADD COLUMN diff_result JSON"))
+            if "flagged_for_review" not in cols:
+                conn.execute(text("ALTER TABLE condition_reports ADD COLUMN flagged_for_review BOOLEAN DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
 
 
 def _auto_seed() -> None:
@@ -86,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(credits.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)
     app.include_router(notifications.router, prefix=api_prefix)
+    app.include_router(media.router, prefix=api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/api/health", tags=["health"])

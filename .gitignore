@@ -16,6 +16,10 @@ htmlcov/
 *.db
 *.sqlite3
 
+# Private storage
+backend/private_storage/
+private_storage/
+
 # Environment
 .env
 .env.*

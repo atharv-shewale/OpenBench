@@ -299,18 +299,63 @@ class WaitlistOut(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ConditionReportCreate(BaseModel):
-    booking_id: int
+    booking_id: Optional[int] = None
     report_type: str      # PRE | POST
     condition: str        # GOOD | FAIR | DAMAGED | BROKEN
     notes: Optional[str] = None
     photos_json: Optional[List[str]] = None
+    checklist_json: Optional[Dict[str, Any]] = None
 
 
-class ConditionReportOut(ConditionReportCreate):
+class ConditionReportOut(BaseModel):
     id: int
+    booking_id: int
     reporter_id: int
+    report_type: str
+    condition: str
+    notes: Optional[str] = None
+    photos_json: Optional[List[str]] = None
+    checklist_json: Optional[Dict[str, Any]] = None
+    signed_photo_urls: Optional[List[str]] = None
+    diff_result: Optional[Dict[str, Any]] = None
+    flagged_for_review: bool = False
     created_at: datetime
     model_config = {"from_attributes": True}
+
+
+class QRCheckInRequest(BaseModel):
+    condition: str = "GOOD"
+    checklist: Dict[str, bool] = {}
+    notes: Optional[str] = None
+    photos: List[str] = []
+
+
+class QRCheckOutRequest(BaseModel):
+    condition: str = "GOOD"
+    checklist: Dict[str, bool] = {}
+    notes: Optional[str] = None
+    photos: List[str] = []
+
+
+class SideBySideConditionComparison(BaseModel):
+    booking_id: int
+    equipment_id: int
+    equipment_name: str
+    lab_name: str
+    user_name: str
+    slot_start: datetime
+    slot_end: datetime
+    checked_in_at: Optional[datetime] = None
+    checked_out_at: Optional[datetime] = None
+    is_late: bool = False
+    overdue_minutes: int = 0
+    status: str
+    pre_report: Optional[ConditionReportOut] = None
+    post_report: Optional[ConditionReportOut] = None
+    diff_result: Optional[Dict[str, Any]] = None
+    signed_diff_photo_url: Optional[str] = None
+    advisory_banner: str = "Advisory only — a human decides"
+    flagged_for_owner: bool = False
 
 
 # ─────────────────────────────────────────────────────────────────────────────

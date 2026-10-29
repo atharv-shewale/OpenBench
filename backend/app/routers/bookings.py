@@ -1,19 +1,20 @@
 """Bookings router — full CRUD + state transitions."""
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Booking, ConditionReport, Incident, User
+from app.models import Booking, ConditionReport, Incident, User, WaitlistEntry
 from app.schemas import (
     BookingCreate, BookingExtensionRequest, BookingManagerAction, BookingOut, CheckoutResponse,
     ConditionReportCreate, ConditionReportOut, IncidentCreate, IncidentOut,
     ReviewQueueItem, WaitlistCreate, WaitlistOut,
+    QRCheckInRequest, QRCheckOutRequest, SideBySideConditionComparison,
 )
-from app.models import Booking, ConditionReport, Incident, User, WaitlistEntry
 from app.services import booking_service, waitlist_service, notification_service
 from app.services.audit_service import write_audit
+from app.services.storage_service import save_photo_bytes, generate_signed_url
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -252,6 +253,24 @@ def explain_waitlist_decision(
     }
 
 
+@router.post("/upload-photo")
+async def upload_condition_photo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Uploads a photo for pre/post session condition checklists.
+    Stores the photo privately in secure storage and returns the filename
+    and a time-limited HMAC-signed URL for viewing.
+    """
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Photo file too large (max 10MB).")
+    filename = save_photo_bytes(content, prefix="cond")
+    signed_url = generate_signed_url(filename)
+    return {"filename": filename, "signed_url": signed_url}
+
+
 @router.get("/{booking_id}", response_model=BookingOut)
 def get_booking(
     booking_id: int,
@@ -400,6 +419,129 @@ def checkout(
     db.refresh(b)
     user = db.query(User).filter(User.id == b.user_id).first()
     return CheckoutResponse(booking=b, credit_balance_after=user.credit_balance)
+
+
+# ── QR Check-In & Return ──────────────────────────────────────────────────────
+
+@router.post("/{booking_id}/qr-checkin", response_model=dict)
+def qr_checkin(
+    booking_id: int,
+    payload: QRCheckInRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    QR-based check-in endpoint with before-condition checklist, notes, and photos.
+    Verifies booker identity and confirms current time (app_now()) is within the check-in window.
+    Transitions booking to IN_PROGRESS.
+    """
+    booking, pre_report = booking_service.perform_qr_checkin(
+        db=db,
+        booking_id=booking_id,
+        actor=current_user,
+        condition=payload.condition,
+        checklist=payload.checklist,
+        notes=payload.notes,
+        photos=payload.photos,
+    )
+    db.commit()
+    db.refresh(booking)
+    db.refresh(pre_report)
+    return {
+        "booking": BookingOut.model_validate(booking),
+        "pre_report": ConditionReportOut.model_validate(pre_report),
+    }
+
+
+@router.post("/{booking_id}/qr-checkout", response_model=dict)
+def qr_checkout(
+    booking_id: int,
+    payload: QRCheckOutRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    QR-based return/check-out endpoint with after-condition checklist, notes, photos,
+    advisory photo-diff comparison against pre-session condition photos,
+    and late return detection with proposed overtime penalties for manager review.
+    Transitions booking to COMPLETED.
+    """
+    booking, post_report, diff_result, is_late, overdue_minutes = booking_service.perform_qr_checkout(
+        db=db,
+        booking_id=booking_id,
+        actor=current_user,
+        condition=payload.condition,
+        checklist=payload.checklist,
+        notes=payload.notes,
+        photos=payload.photos,
+    )
+    db.commit()
+    db.refresh(booking)
+    db.refresh(post_report)
+    user = db.query(User).filter(User.id == booking.user_id).first()
+    return {
+        "booking": BookingOut.model_validate(booking),
+        "post_report": ConditionReportOut.model_validate(post_report),
+        "diff_result": diff_result,
+        "is_late": is_late,
+        "overdue_minutes": overdue_minutes,
+        "credit_balance_after": user.credit_balance,
+    }
+
+
+@router.get("/{booking_id}/condition-comparison", response_model=SideBySideConditionComparison)
+def get_condition_comparison(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns the side-by-side condition comparison (PRE checklist & photo vs POST checklist & photo),
+    accompanied by the Pillow-generated visual diff overlay and change percentage.
+    All photo URLs are securely signed with HMAC-SHA256 and verified against app_now().
+    """
+    data = booking_service.get_side_by_side_comparison(db, booking_id, current_user)
+    return SideBySideConditionComparison(**data)
+
+
+@router.get("/{booking_id}/condition-reports", response_model=List[ConditionReportOut])
+def list_booking_condition_reports(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    if current_user.role == "user" and booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    reports = (
+        db.query(ConditionReport)
+        .filter(ConditionReport.booking_id == booking_id)
+        .order_by(ConditionReport.created_at.asc())
+        .all()
+    )
+    out = []
+    for r in reports:
+        signed_urls = [generate_signed_url(fn) for fn in (r.photos_json or [])]
+        out.append(
+            ConditionReportOut(
+                id=r.id,
+                booking_id=r.booking_id,
+                reporter_id=r.reporter_id,
+                report_type=r.report_type,
+                condition=r.condition,
+                notes=r.notes,
+                photos_json=r.photos_json or [],
+                checklist_json=r.checklist_json or {},
+                signed_photo_urls=signed_urls,
+                diff_result=r.diff_result,
+                flagged_for_review=r.flagged_for_review,
+                created_at=r.created_at,
+            )
+        )
+    return out
 
 
 # ── Condition Reports ──────────────────────────────────────────────────────────

@@ -271,6 +271,9 @@ class ConditionReport(Base):
     condition: Mapped[str] = mapped_column(String(20), nullable=False)      # GOOD | FAIR | DAMAGED | BROKEN
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     photos_json: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    checklist_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    diff_result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    flagged_for_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now)
 
     booking: Mapped["Booking"] = relationship("Booking", back_populates="condition_reports")

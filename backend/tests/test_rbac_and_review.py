@@ -193,3 +193,4 @@ class TestRoleBasedAccessAndSecurity:
         )
         assert resp.status_code == 422
         assert "clear rejection reason is required" in resp.json()["detail"].lower()
+

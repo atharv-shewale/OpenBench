@@ -11,6 +11,7 @@ import EquipmentDetail from "./pages/EquipmentDetail";
 import OwnerResourceList from "./pages/OwnerResourceList";
 import ResourceEditor from "./pages/ResourceEditor";
 import ManagerReviewQueue from "./pages/ManagerReviewQueue";
+import SessionCheckinCheckout from "./pages/SessionCheckinCheckout";
 
 function Home() {
   return (
@@ -433,19 +434,36 @@ function Dashboard() {
                         </p>
                       )}
                     </div>
-                    <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                        b.status === "COMPLETED"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : b.status === "APPROVED"
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : b.status === "PENDING"
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-rose-50 text-rose-700 border border-rose-200"
-                      }`}
-                    >
-                      {b.status}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                          b.status === "COMPLETED"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : b.status === "APPROVED"
+                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                            : b.status === "IN_PROGRESS"
+                            ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                            : b.status === "PENDING"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                        }`}
+                      >
+                        {b.status}
+                      </span>
+
+                      {["APPROVED", "IN_PROGRESS", "COMPLETED"].includes(b.status) && (
+                        <Link
+                          to={`/bookings/${b.id}/session`}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:text-brand-600 hover:border-brand-500 shadow-2xs transition"
+                        >
+                          {b.status === "APPROVED"
+                            ? "QR Check-In →"
+                            : b.status === "IN_PROGRESS"
+                            ? "Handover / Return →"
+                            : "Condition & Diff →"}
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -485,6 +503,7 @@ export default function App() {
         <Route path="/owner/resources/new" element={<ResourceEditor />} />
         <Route path="/owner/resources/:id/edit" element={<ResourceEditor />} />
         <Route path="/manager/review-queue" element={<ManagerReviewQueue />} />
+        <Route path="/bookings/:id/session" element={<SessionCheckinCheckout />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
