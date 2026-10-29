@@ -149,12 +149,18 @@ class Equipment(Base):
     max_booking_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="available")  # available|maintenance|retired
     image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    photos: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True) # Specific room, bench or wing
+    access_conditions: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # e.g. Accompanied by staff, safety gear
+    deposit_credits: Mapped[int] = mapped_column(Integer, nullable=False, default=0) # Security deposit in credits
+    approver_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     rules: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     required_credentials: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=app_now, onupdate=app_now)
 
     lab: Mapped["Lab"] = relationship("Lab", back_populates="equipment")
+    approver: Mapped[Optional["User"]] = relationship("User", foreign_keys=[approver_id])
     bookings: Mapped[List["Booking"]] = relationship("Booking", back_populates="equipment")
     availability_windows: Mapped[List["EquipmentAvailabilityWindow"]] = relationship(
         "EquipmentAvailabilityWindow", back_populates="equipment", cascade="all, delete-orphan"

@@ -113,6 +113,11 @@ class EquipmentCreate(BaseModel):
     credit_per_hour: int
     max_booking_hours: int = 4
     image_url: Optional[str] = None
+    photos: Optional[List[str]] = None
+    location: Optional[str] = None
+    access_conditions: Optional[str] = None
+    deposit_credits: int = 0
+    approver_id: Optional[int] = None
     rules: Optional[Dict[str, Any]] = None
     required_credentials: Optional[List[str]] = None
     availability_windows: List[AvailabilityWindowIn] = []
@@ -121,9 +126,16 @@ class EquipmentCreate(BaseModel):
 class EquipmentUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    type: Optional[str] = None
     credit_per_hour: Optional[int] = None
     max_booking_hours: Optional[int] = None
     status: Optional[str] = None
+    image_url: Optional[str] = None
+    photos: Optional[List[str]] = None
+    location: Optional[str] = None
+    access_conditions: Optional[str] = None
+    deposit_credits: Optional[int] = None
+    approver_id: Optional[int] = None
     rules: Optional[Dict[str, Any]] = None
     required_credentials: Optional[List[str]] = None
     availability_windows: Optional[List[AvailabilityWindowIn]] = None
@@ -133,6 +145,8 @@ class EquipmentOut(BaseModel):
     id: int
     lab_id: int
     lab_name: Optional[str] = None
+    institution: Optional[str] = None
+    city: Optional[str] = None
     name: str
     type: str
     description: Optional[str]
@@ -140,12 +154,34 @@ class EquipmentOut(BaseModel):
     max_booking_hours: int
     status: str
     image_url: Optional[str]
+    photos: Optional[List[str]] = None
+    location: Optional[str] = None
+    access_conditions: Optional[str] = None
+    deposit_credits: int = 0
+    approver_id: Optional[int] = None
+    approver_name: Optional[str] = None
     rules: Optional[Dict[str, Any]]
     required_credentials: Optional[List[str]]
     availability_windows: List[AvailabilityWindowOut] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class EligibilityCriterion(BaseModel):
+    criterion: str
+    met: bool
+    details: str
+
+
+class EligibilityCheckResponse(BaseModel):
+    equipment_id: int
+    is_eligible: bool
+    reasons: List[str] = []
+    criteria: List[EligibilityCriterion] = []
+    user_balance: int
+    required_credits: int
+    deposit_credits: int
 
 
 # ─────────────────────────────────────────────────────────────────────────────
