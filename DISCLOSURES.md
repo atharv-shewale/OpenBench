@@ -71,3 +71,4 @@ All frontend dependencies are defined in [`frontend/package.json`](./frontend/pa
 - **Cryptographic Hash Ledger**: Implements native Python standard library `hashlib.sha256` for tamper-evident chaining. No external proprietary blockchain or distributed ledger protocols were used.
 - **Signed Storage URLs**: Implements native Python standard library `hmac` and `hashlib.sha256` with unix timestamp expiry verification to protect equipment condition photos from unauthorized public indexing.
 - **Password Protection**: Implements `bcrypt` via Passlib for one-way password salting and hashing. Plaintext credentials are never logged, stored, or transmitted in audit ledgers.
+

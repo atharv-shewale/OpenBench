@@ -20,10 +20,10 @@ Concurrently:
 
 | Persona | Archetype | Pain Point | How OpenBench Solves It |
 | :--- | :--- | :--- | :--- |
-| **Rahul Mondal** | ITI Apprentice / Diploma Student (Jadavpur) | Cannot afford private lab testing for his electric vehicle chassis capstone project. | Transparent access with student credits, +35 first-time user waitlist boost, and instant counterfactual suggestions. |
-| **Sneha Patil** | Founder, Patil Precision Parts (MSME, Pune) | Commercial NABL testing houses charge ₹18,000/test with 15-day backlogs for carbon-fiber tensile validation. | Book unutilised college UTM machines during non-peak windows with credit holds and certified condition sign-offs. |
-| **Priya Sharma** | Senior Lab Technician / Manager (Vidyasagar College) | Spends hours manually vetting qualifications, chasing no-shows, and mediating scheduling conflicts. | Unified review queue with automated eligibility vetting, prime-slot tracking, and automated ghost-booking auto-release. |
-| **Dr. Anita Desai** | Head of Mechanical Engineering / Lab Owner | Fears equipment breakdown without accountability; needs audit trails for university inspections. | Strict credential verification, pre/post visual condition diff, cryptographic SHA-256 audit logs, and owner override powers. |
+| **Rahul Mondal** | ITI Apprentice / Diploma Student (Shiroli, Kolhapur) | Cannot afford private lab testing for his electric vehicle chassis capstone project. | Transparent access with student credits, +35 first-time user waitlist boost, and instant counterfactual suggestions. |
+| **Sneha Patil** | Founder, Patil Precision Components (MSME, Gokul Shirgaon, Kolhapur) | Commercial NABL testing houses charge ₹18,000/test with 15-day backlogs for carbon-fiber tensile validation. | Book unutilised college UTM machines during non-peak windows with credit holds and certified condition sign-offs. |
+| **Priya Sharma** | Senior Lab Technician / Manager (Panchganga Institute, Kolhapur) | Spends hours manually vetting qualifications, chasing no-shows, and mediating scheduling conflicts. | Unified review queue with automated eligibility vetting, prime-slot tracking, and automated ghost-booking auto-release. |
+| **Dr. Anita Desai** | Head of Mechanical Engineering / Lab Owner (Panchganga Institute, Kolhapur) | Fears equipment breakdown without accountability; needs audit trails for university inspections. | Strict credential verification, pre/post visual condition diff, cryptographic SHA-256 audit logs, and owner override powers. |
 | **Platform Admin** | University System Administrator | Requires macro-level utilization metrics, demo clock orchestration, and cross-department audit verification. | Global audit integrity verification, demo clock time-warping, synthetic fairness simulator, and economic impact dashboards. |
 
 ---
@@ -254,3 +254,4 @@ Entry Hash = SHA256(
 - **Lead Systems Architect & Backend Developer**: Designed data schema, allocation engine, hash-chained cryptographic ledger, auto-release scheduler, and FastAPI routers.
 - **Full-Stack UI/UX Engineer**: Built React 18 SPA, Judge Mode dashboard, transaction timelines, multilingual context provider, and interactive machine simulator.
 - **Quality Assurance & Verification Specialist**: Implemented pure-function test suites, multi-actor E2E lifecycle scenarios, and Render cold-start verification harness.
+

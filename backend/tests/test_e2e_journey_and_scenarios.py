@@ -31,40 +31,40 @@ def e2e_setup(db):
         role="admin",
     )
     owner = User(
-        email="dr.anita.desai@vidyasagar.ac.in",
+        email="dr.anita.desai@panchganga-tech.ac.in",
         full_name="Dr. Anita Desai",
         hashed_password=hash_password("Owner@123"),
         role="owner",
     )
     manager = User(
-        email="priya.sharma@vidyasagar.ac.in",
+        email="priya.sharma@panchganga-tech.ac.in",
         full_name="Priya Sharma",
         hashed_password=hash_password("Mgr@1234"),
         role="manager",
     )
     student = User(
-        email="rahul.mondal@iti-jadavpur.ac.in",
+        email="rahul.mondal@iti-shiroli.ac.in",
         full_name="Rahul Mondal",
         hashed_password=hash_password("User@123"),
         role="user",
-        organisation="ITI Jadavpur",
+        organisation="Government ITI Shiroli (Fictional - Kolhapur)",
         credit_balance=100,
     )
     msme = User(
-        email="sneha.patil@patilprecision.com",
+        email="sneha.patil@patilprecision-mfg.in",
         full_name="Sneha Patil",
         hashed_password=hash_password("User@123"),
         role="user",
-        organisation="Patil Precision Parts (MSME)",
+        organisation="Patil Precision Components (Fictional MSME - Gokul Shirgaon, Kolhapur)",
         credit_balance=150,
     )
     db.add_all([admin, owner, manager, student, msme])
     db.flush()
 
     lab = Lab(
-        name="Vidyasagar Fab Lab",
-        institution="Vidyasagar Engineering College",
-        city="Kolkata",
+        name="Panchganga Prototyping Lab (Fictional)",
+        institution="Panchganga Institute of Technology (Fictional - Kolhapur)",
+        city="Kolhapur",
     )
     db.add(lab)
     db.flush()

@@ -119,6 +119,13 @@ def advance_clock(
     current_user=Depends(get_manager_or_admin),
 ):
     new_offset = demo_clock.advance_clock(payload.seconds)
+    # Trigger on-demand ghost-booking auto-release upon clock advance
+    from app.services.auto_release_service import scan_and_auto_release_unclaimed_bookings
+    try:
+        scan_and_auto_release_unclaimed_bookings(db, grace_minutes=20)
+    except Exception as exc:
+        logger.warning(f"On-demand auto-release during clock advance failed: {exc}")
+
     write_audit(
         db,
         entity_type="clock",

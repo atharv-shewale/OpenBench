@@ -93,11 +93,11 @@ def demo_login(role: str, db: Session = Depends(get_db)):
     """
     role_map = {
         "admin": "platform.admin@openbench.in",
-        "owner": "dr.anita.desai@vidyasagar.ac.in",
-        "manager": "priya.sharma@vidyasagar.ac.in",
-        "user": "rahul.mondal@iti-jadavpur.ac.in",
-        "apprentice": "rahul.mondal@iti-jadavpur.ac.in",
-        "msme": "sneha.patil@patilprecision.com",
+        "owner": "dr.anita.desai@panchganga-tech.ac.in",
+        "manager": "priya.sharma@panchganga-tech.ac.in",
+        "user": "rahul.mondal@iti-shiroli.ac.in",
+        "apprentice": "rahul.mondal@iti-shiroli.ac.in",
+        "msme": "sneha.patil@patilprecision-mfg.in",
     }
     email = role_map.get(role.lower())
     user = None

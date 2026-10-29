@@ -104,43 +104,43 @@ def run_seed(db: Session, wipe: bool = False) -> Dict[str, Any]:
     admin = _make_user(db, "platform.admin@openbench.in", "Platform Admin", "Admin@123", "admin", "OpenBench")
 
     # Owners
-    anita = _make_user(db, "dr.anita.desai@vidyasagar.ac.in", "Dr. Anita Desai", "Owner@123", "owner", "Vidyasagar Engineering College")
-    suresh = _make_user(db, "prof.suresh.iyer@suryodaya.edu.in", "Prof. Suresh Iyer", "Owner@123", "owner", "Suryodaya Polytechnic")
+    anita = _make_user(db, "dr.anita.desai@panchganga-tech.ac.in", "Dr. Anita Desai", "Owner@123", "owner", "Panchganga Institute of Technology (Fictional)")
+    suresh = _make_user(db, "prof.suresh.iyer@sahyadri-poly.ac.in", "Prof. Suresh Iyer", "Owner@123", "owner", "Sahyadri Polytechnic Institute (Fictional)")
 
     # Managers
-    priya = _make_user(db, "priya.sharma@vidyasagar.ac.in", "Priya Sharma", "Mgr@1234", "manager", "Vidyasagar Engineering College")
-    ramesh = _make_user(db, "ramesh.nair@suryodaya.edu.in", "Ramesh Nair", "Mgr@1234", "manager", "Suryodaya Polytechnic")
+    priya = _make_user(db, "priya.sharma@panchganga-tech.ac.in", "Priya Sharma", "Mgr@1234", "manager", "Panchganga Institute of Technology (Fictional)")
+    ramesh = _make_user(db, "ramesh.nair@sahyadri-poly.ac.in", "Ramesh Nair", "Mgr@1234", "manager", "Sahyadri Polytechnic Institute (Fictional)")
 
     # Regular users
-    rahul = _make_user(db, "rahul.mondal@iti-jadavpur.ac.in", "Rahul Mondal", "User@123", "user", "ITI Jadavpur", credits=50)
-    sneha = _make_user(db, "sneha.patil@patilprecision.com", "Sneha Patil", "User@123", "user", "Patil Precision Parts (MSME)", credits=120)
-    arjun = _make_user(db, "arjun.kapoor@kapoortech.in", "Arjun Kapoor", "User@123", "user", "KapoorTech Startup", credits=200)
-    meena = _make_user(db, "meena.krishnan@iti-pune.ac.in", "Meena Krishnan", "User@123", "user", "ITI Pune", credits=80)
-    vikram = _make_user(db, "vikram.shah@shahtools.in", "Vikram Shah", "User@123", "user", "Shah Tools (MSME)", credits=150)
-    pooja = _make_user(db, "pooja.reddy@redtechlab.in", "Pooja Reddy", "User@123", "user", "RedTech Labs (Startup)", credits=90)
-    kumar = _make_user(db, "kumar.das@dasengineering.in", "Kumar Das", "User@123", "user", "Das Engineering (MSME)", credits=60)
-    farhan = _make_user(db, "farhan.sheikh@iti-kolkata.ac.in", "Farhan Sheikh", "User@123", "user", "ITI Kolkata", credits=40)
+    rahul = _make_user(db, "rahul.mondal@iti-shiroli.ac.in", "Rahul Mondal", "User@123", "user", "Government ITI Shiroli (Fictional - Kolhapur)", credits=50)
+    sneha = _make_user(db, "sneha.patil@patilprecision-mfg.in", "Sneha Patil", "User@123", "user", "Patil Precision Components (Fictional MSME - Gokul Shirgaon, Kolhapur)", credits=120)
+    arjun = _make_user(db, "arjun.kapoor@deccanagri.in", "Arjun Kapoor", "User@123", "user", "Deccan AgriTech Innovations (Fictional Startup - Kolhapur)", credits=200)
+    meena = _make_user(db, "meena.krishnan@iti-shiroli.ac.in", "Meena Krishnan", "User@123", "user", "Government ITI Shiroli (Fictional - Kolhapur)", credits=80)
+    vikram = _make_user(db, "vikram.shah@mahalaxmitools.in", "Vikram Shah", "User@123", "user", "Mahalaxmi Foundry & Tooling (Fictional MSME - Kolhapur)", credits=150)
+    pooja = _make_user(db, "pooja.reddy@rankalaecotech.in", "Pooja Reddy", "User@123", "user", "Rankala EcoTech Prototyping (Fictional Startup - Kolhapur)", credits=90)
+    kumar = _make_user(db, "kumar.das@shahuagro.in", "Kumar Das", "User@123", "user", "Shahu Agro-Machinery & Prototyping (Fictional MSME - Kolhapur)", credits=60)
+    farhan = _make_user(db, "farhan.sheikh@iti-shiroli.ac.in", "Farhan Sheikh", "User@123", "user", "Government ITI Shiroli (Fictional - Kolhapur)", credits=40)
 
     # ── Labs ───────────────────────────────────────────────────────────────────
     lab1 = Lab(
-        name="Vidyasagar Fab Lab",
-        institution="Vidyasagar Engineering College",
-        city="Kolkata",
+        name="Panchganga Prototyping Lab (Fictional)",
+        institution="Panchganga Institute of Technology (Fictional - Kolhapur)",
+        city="Kolhapur",
         description=(
-            "State-of-the-art fabrication and materials testing lab. "
-            "Open to MSMEs, ITI students, and startups under the OpenBench initiative."
+            "Central mechanical testing and fabrication centre in Kolhapur, equipped with "
+            "precision UTM and laser tooling for regional engineering MSMEs and apprentices."
         ),
-        contact_email="fablab@vidyasagar.ac.in",
+        contact_email="prototyping@panchganga-tech.ac.in",
     )
     lab2 = Lab(
-        name="Suryodaya Tech Lab",
-        institution="Suryodaya Polytechnic",
-        city="Pune",
+        name="Sahyadri Advanced Materials Testing Lab (Fictional)",
+        institution="Sahyadri Polytechnic Institute (Fictional - Kolhapur)",
+        city="Kolhapur",
         description=(
-            "Electronics and precision measurement lab with industry-grade PCB routing "
-            "and mechanical testing equipment."
+            "Applied testing and machining facility supporting Kolhapur automotive "
+            "foundries and agricultural equipment innovators."
         ),
-        contact_email="techlab@suryodaya.edu.in",
+        contact_email="testing@sahyadri-poly.ac.in",
     )
     db.add_all([lab1, lab2])
     db.flush()
@@ -259,21 +259,21 @@ def run_seed(db: Session, wipe: bool = False) -> Dict[str, Any]:
     db.add_all([
         UserCredential(
             user_id=arjun.id, credential_type="MACHINE_SHOP_SAFETY",
-            issued_by="Vidyasagar Engineering College",
+            issued_by="Panchganga Institute of Technology (Fictional)",
             issued_at=now - timedelta(days=90),
             expires_at=now + timedelta(days=275),
             is_verified=True, verified_by=priya.id,
         ),
         UserCredential(
             user_id=sneha.id, credential_type="MATERIALS_TESTING_BASIC",
-            issued_by="CIPET Pune",
+            issued_by="Kolhapur Regional Testing Directorate (Fictional)",
             issued_at=now - timedelta(days=60),
             expires_at=now + timedelta(days=305),
             is_verified=True, verified_by=ramesh.id,
         ),
         UserCredential(
             user_id=vikram.id, credential_type="LASER_SAFETY_L1",
-            issued_by="Vidyasagar Engineering College",
+            issued_by="Panchganga Institute of Technology (Fictional)",
             issued_at=now - timedelta(days=30),
             expires_at=now + timedelta(days=335),
             is_verified=True, verified_by=priya.id,

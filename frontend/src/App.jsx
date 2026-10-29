@@ -18,6 +18,7 @@ import FairnessSimulator from "./pages/FairnessSimulator";
 import { LanguageProvider, useLanguage } from "./store/language";
 import JudgeModePanel from "./components/JudgeModePanel";
 import ImpactDashboard from "./components/ImpactDashboard";
+import ColdStartNotice from "./components/ColdStartNotice";
 
 function Home() {
   const { t } = useLanguage();
@@ -673,6 +674,7 @@ export default function App() {
     <LanguageProvider>
       <BrowserRouter>
         <Navbar />
+        <ColdStartNotice />
         <DemoClockControl />
         <Routes>
           <Route path="/" element={<Home />} />

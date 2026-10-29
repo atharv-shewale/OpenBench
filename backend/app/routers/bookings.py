@@ -51,6 +51,13 @@ def list_bookings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from app.services.auto_release_service import scan_and_auto_release_unclaimed_bookings
+    try:
+        scan_and_auto_release_unclaimed_bookings(db, grace_minutes=20)
+        db.commit()
+    except Exception:
+        db.rollback()
+
     q = db.query(Booking)
     if current_user.role == "user":
         q = q.filter(Booking.user_id == current_user.id)
@@ -74,6 +81,13 @@ def get_review_queue(
     """
     if current_user.role not in ("owner", "manager", "admin"):
         raise HTTPException(status_code=403, detail="Manager or owner role required to access the review queue.")
+
+    from app.services.auto_release_service import scan_and_auto_release_unclaimed_bookings
+    try:
+        scan_and_auto_release_unclaimed_bookings(db, grace_minutes=20)
+        db.commit()
+    except Exception:
+        db.rollback()
 
     from app.models import Equipment, Lab, LabMembership, UserCredential
     from app.services.allocation_engine import is_prime_slot, compute_waitlist_score

@@ -86,10 +86,10 @@ export default function JudgeModePanel() {
 
   const roles = [
     { key: "admin", label: "Admin", email: "platform.admin@openbench.in", color: "bg-purple-100 text-purple-800 border-purple-200" },
-    { key: "owner", label: "Lab Owner", email: "dr.anita.desai@vidyasagar.ac.in", color: "bg-amber-100 text-amber-800 border-amber-200" },
-    { key: "manager", label: "Lab Manager", email: "priya.sharma@vidyasagar.ac.in", color: "bg-blue-100 text-blue-800 border-blue-200" },
-    { key: "apprentice", label: "ITI Apprentice", email: "rahul.mondal@iti-jadavpur.ac.in", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-    { key: "msme", label: "MSME Engineer", email: "sneha.patil@patilprecision.com", color: "bg-teal-100 text-teal-800 border-teal-200" },
+    { key: "owner", label: "Lab Owner", email: "dr.anita.desai@panchganga-tech.ac.in", color: "bg-amber-100 text-amber-800 border-amber-200" },
+    { key: "manager", label: "Lab Manager", email: "priya.sharma@panchganga-tech.ac.in", color: "bg-blue-100 text-blue-800 border-blue-200" },
+    { key: "apprentice", label: "ITI Apprentice", email: "rahul.mondal@iti-shiroli.ac.in", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+    { key: "msme", label: "MSME Engineer", email: "sneha.patil@patilprecision-mfg.in", color: "bg-teal-100 text-teal-800 border-teal-200" },
   ];
 
   const journeySteps = [

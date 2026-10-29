@@ -17,13 +17,13 @@ def test_demo_login_endpoints(client, db):
         role="admin",
     )
     owner = User(
-        email="dr.anita.desai@vidyasagar.ac.in",
+        email="dr.anita.desai@panchganga-tech.ac.in",
         full_name="Dr. Anita Desai",
         hashed_password=hash_password("Owner@123"),
         role="owner",
     )
     user = User(
-        email="rahul.mondal@iti-jadavpur.ac.in",
+        email="rahul.mondal@iti-shiroli.ac.in",
         full_name="Rahul Mondal",
         hashed_password=hash_password("User@123"),
         role="user",

@@ -85,8 +85,8 @@ def test_shared_booking_timeline_and_csv(client, db):
     from app.models import Lab
     lab = Lab(
         name="Materials Testing Lab",
-        institution="Jadavpur ITI",
-        city="Kolkata",
+        institution="Government ITI Shiroli (Fictional - Kolhapur)",
+        city="Kolhapur",
     )
     db.add_all([user, manager, lab])
     db.flush()

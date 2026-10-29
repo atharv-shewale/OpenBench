@@ -33,10 +33,10 @@ OpenBench features a dedicated **Judge Mode** landing banner with **1-click auth
 | Role | Name | Email | Password | Preloaded Balance / Context |
 | :--- | :--- | :--- | :--- | :--- |
 | **Platform Admin** | Platform Admin | `platform.admin@openbench.in` | `Admin@123` | System-wide audit inspection, clock controls |
-| **Lab Owner** | Dr. Anita Desai | `dr.anita.desai@vidyasagar.ac.in` | `Owner@123` | Vidyasagar Fab Lab, override authority |
-| **Lab Manager** | Priya Sharma | `priya.sharma@vidyasagar.ac.in` | `Mgr@1234` | Review queue, strike & reversal management |
-| **Apprentice / Student** | Rahul Mondal | `rahul.mondal@iti-jadavpur.ac.in` | `User@123` | 100 Credits, ITI Jadavpur, first-time boost |
-| **MSME Founder** | Sneha Patil | `sneha.patil@patilprecision.com` | `User@123` | 150 Credits, Patil Precision Parts |
+| **Lab Owner** | Dr. Anita Desai | `dr.anita.desai@panchganga-tech.ac.in` | `Owner@123` | Panchganga Prototyping Lab (Kolhapur), override authority |
+| **Lab Manager** | Priya Sharma | `priya.sharma@panchganga-tech.ac.in` | `Mgr@1234` | Review queue, strike & reversal management |
+| **Apprentice / Student** | Rahul Mondal | `rahul.mondal@iti-shiroli.ac.in` | `User@123` | 100 Credits, Govt ITI Shiroli (Kolhapur), first-time boost |
+| **MSME Founder** | Sneha Patil | `sneha.patil@patilprecision-mfg.in` | `User@123` | 150 Credits, Patil Precision Components (Kolhapur) |
 
 ---
 
@@ -165,3 +165,4 @@ All core navigation items, eligibility cards, review queues, audit buttons, and 
 
 ## 📄 License
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
