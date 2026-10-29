@@ -202,6 +202,25 @@ class BookingCreate(BaseModel):
 class BookingManagerAction(BaseModel):
     note: Optional[str] = None
     decision_reason: Optional[Dict[str, Any]] = None
+    override: bool = False  # Allows owner to override eligibility or conflict check
+
+
+class BookingExtensionRequest(BaseModel):
+    extra_hours: int = 1
+
+
+class ReviewQueueItem(BaseModel):
+    booking: BookingOut
+    user_name: str
+    user_email: str
+    user_organisation: Optional[str]
+    equipment_name: str
+    lab_name: str
+    lab_id: int
+    user_history: Dict[str, Any]
+    eligibility_evaluation: Dict[str, Any]
+    waitlist_score_breakdown: Optional[Dict[str, Any]] = None
+    is_prime_slot: bool = False
 
 
 class CounterfactualSuggestion(BaseModel):

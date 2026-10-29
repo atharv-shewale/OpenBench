@@ -10,6 +10,7 @@ import EquipmentDiscovery from "./pages/EquipmentDiscovery";
 import EquipmentDetail from "./pages/EquipmentDetail";
 import OwnerResourceList from "./pages/OwnerResourceList";
 import ResourceEditor from "./pages/ResourceEditor";
+import ManagerReviewQueue from "./pages/ManagerReviewQueue";
 
 function Home() {
   return (
@@ -483,6 +484,7 @@ export default function App() {
         <Route path="/owner/resources" element={<OwnerResourceList />} />
         <Route path="/owner/resources/new" element={<ResourceEditor />} />
         <Route path="/owner/resources/:id/edit" element={<ResourceEditor />} />
+        <Route path="/manager/review-queue" element={<ManagerReviewQueue />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

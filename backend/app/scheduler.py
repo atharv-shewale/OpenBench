@@ -106,6 +106,82 @@ def _notify_waitlist_on_cancellations() -> None:
         db.close()
 
 
+def _dispatch_reminders_and_overdue_alerts() -> None:
+    """
+    Checks:
+    1. Upcoming APPROVED sessions starting in ~30 minutes -> sends REMINDER notification.
+    2. IN_PROGRESS sessions past slot_end -> sends OVERDUE_RETURN notification and alert.
+    """
+    from datetime import timedelta
+    from app.clock import app_now
+    from app.database import SessionLocal
+    from app.models import Booking
+    from app.services.notification_service import notify
+
+    db = SessionLocal()
+    try:
+        now = app_now()
+
+        # 1. 30-Minute Reminders
+        upcoming_window_start = now + timedelta(minutes=20)
+        upcoming_window_end = now + timedelta(minutes=35)
+        remindable = (
+            db.query(Booking)
+            .filter(
+                Booking.status == "APPROVED",
+                Booking.slot_start >= upcoming_window_start,
+                Booking.slot_start <= upcoming_window_end,
+            )
+            .all()
+        )
+        for b in remindable:
+            notify(
+                db,
+                user_id=b.user_id,
+                title="Upcoming Session Reminder 🔔",
+                message=(
+                    f"Reminder: Your booking #{b.id} begins at "
+                    f"{b.slot_start.strftime('%H:%M')} UTC. "
+                    f"Please remember to bring your student/MSME identification and scan the bench QR code to check in."
+                ),
+                notif_type="REMINDER",
+                entity_type="booking",
+                entity_id=b.id,
+            )
+
+        # 2. Overdue Return Alerts
+        overdue_active = (
+            db.query(Booking)
+            .filter(
+                Booking.status == "IN_PROGRESS",
+                Booking.slot_end < now,
+            )
+            .all()
+        )
+        for b in overdue_active:
+            mins_overdue = int((now - b.slot_end).total_seconds() / 60)
+            notify(
+                db,
+                user_id=b.user_id,
+                title="Session Overdue — Return Bench ⚠️",
+                message=(
+                    f"Your active session for booking #{b.id} ended {mins_overdue} minute(s) ago at "
+                    f"{b.slot_end.strftime('%H:%M')} UTC. "
+                    f"Please complete checkout immediately to avoid penalty points or request an extension."
+                ),
+                notif_type="OVERDUE_RETURN",
+                entity_type="booking",
+                entity_id=b.id,
+            )
+
+        db.commit()
+    except Exception:
+        logger.exception("Error in _dispatch_reminders_and_overdue_alerts job")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     scheduler.add_job(
         _check_no_shows,
@@ -120,6 +196,13 @@ def start_scheduler() -> None:
         id="notify_waitlist",
         replace_existing=True,
         name="Waitlist notifier",
+    )
+    scheduler.add_job(
+        _dispatch_reminders_and_overdue_alerts,
+        trigger=IntervalTrigger(minutes=5),
+        id="reminders_and_overdue",
+        replace_existing=True,
+        name="Session reminders and overdue returns notifier",
     )
     scheduler.start()
     logger.info("APScheduler started with %d jobs.", len(scheduler.get_jobs()))

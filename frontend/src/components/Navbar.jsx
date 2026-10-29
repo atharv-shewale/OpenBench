@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
+import NotificationBell from "./NotificationBell";
 import {
   Compass,
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   Coins,
   Menu,
   X,
+  ClipboardCheck,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -66,6 +68,16 @@ export default function Navbar() {
 
             {isOwnerOrManager && (
               <Link
+                to="/manager/review-queue"
+                className="flex items-center gap-1.5 text-gray-600 hover:text-brand-600 transition"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                Review Queue
+              </Link>
+            )}
+
+            {isOwnerOrManager && (
+              <Link
                 to="/owner/resources/new"
                 className="flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-semibold"
               >
@@ -75,7 +87,9 @@ export default function Navbar() {
             )}
 
             {user ? (
-              <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
+              <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+                <NotificationBell />
+
                 <Link
                   to="/dashboard"
                   className="flex items-center gap-1.5 text-gray-700 hover:text-brand-600 font-semibold"
@@ -149,6 +163,13 @@ export default function Navbar() {
                 className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Lab Inventory
+              </Link>
+              <Link
+                to="/manager/review-queue"
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold"
+              >
+                Review Queue
               </Link>
               <Link
                 to="/owner/resources/new"

@@ -280,47 +280,65 @@ def create_booking(
 
 
 def approve_booking(
-    db: Session, booking_id: int, manager: User, note: Optional[str], decision_reason: Optional[dict]
+    db: Session,
+    booking_id: int,
+    manager: User,
+    note: Optional[str],
+    decision_reason: Optional[dict],
+    override: bool = False,
 ) -> Booking:
     booking = _get_booking_or_404(db, booking_id)
     _assert_status(booking, "PENDING")
 
-    # Atomic transactional check for conflicts before final approval
-    overlap = (
-        db.query(Booking)
-        .filter(
-            Booking.equipment_id == booking.equipment_id,
-            Booking.id != booking.id,
-            Booking.status.in_(["APPROVED", "IN_PROGRESS"]),
-            Booking.slot_start < booking.slot_end,
-            Booking.slot_end > booking.slot_start,
+    # If owner override is active, check permission
+    if override:
+        if manager.role not in ("owner", "admin"):
+            raise HTTPException(status_code=403, detail="Only owners or admins can execute an override approval.")
+
+    # Atomic transactional check for conflicts before final approval (unless owner override)
+    if not override:
+        overlap = (
+            db.query(Booking)
+            .filter(
+                Booking.equipment_id == booking.equipment_id,
+                Booking.id != booking.id,
+                Booking.status.in_(["APPROVED", "IN_PROGRESS"]),
+                Booking.slot_start < booking.slot_end,
+                Booking.slot_end > booking.slot_start,
+            )
+            .first()
         )
-        .first()
-    )
-    if overlap:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot approve: slot overlaps with confirmed Booking #{overlap.id}.",
-        )
+        if overlap:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot approve: slot overlaps with confirmed Booking #{overlap.id}. Owner override required.",
+            )
 
     booking.status = "APPROVED"
     booking.manager_note = note
-    booking.decision_reason = decision_reason or {"criterion": "Manager review", "automated": False}
+    booking.decision_reason = decision_reason or {
+        "criterion": "Owner Override" if override else "Manager review",
+        "automated": False,
+        "override": override,
+    }
+
+    action_name = "BOOKING_APPROVED_OVERRIDE" if override else "BOOKING_APPROVED"
 
     audit_service.write_audit(
         db,
         entity_type="booking",
         entity_id=booking.id,
-        action="BOOKING_APPROVED",
-        payload={"manager_id": manager.id, "note": note, "decision_reason": booking.decision_reason},
+        action=action_name,
+        payload={"manager_id": manager.id, "note": note, "decision_reason": booking.decision_reason, "override": override},
         actor_id=manager.id,
         actor_role=manager.role,
+        rationale=note or ("Owner administrative override approved." if override else "Manager approval"),
     )
     notification_service.notify(
         db, booking.user_id,
-        title="Booking Approved ✓",
+        title="Booking Approved ✓" if not override else "Booking Approved by Owner Override ★",
         message=f"Your booking #{booking.id} has been approved. {note or ''}",
-        notif_type="BOOKING_UPDATE",
+        notif_type="APPROVAL",
         entity_type="booking",
         entity_id=booking.id,
     )
@@ -328,14 +346,17 @@ def approve_booking(
 
 
 def reject_booking(
-    db: Session, booking_id: int, manager: User, note: Optional[str], decision_reason: Optional[dict]
+    db: Session, booking_id: int, manager: User, note: str, decision_reason: Optional[dict]
 ) -> Booking:
     booking = _get_booking_or_404(db, booking_id)
     _assert_status(booking, "PENDING")
 
+    if not note or not note.strip():
+        raise HTTPException(status_code=422, detail="A clear rejection reason is mandatory.")
+
     booking.status = "REJECTED"
     booking.manager_note = note
-    booking.decision_reason = decision_reason or {"criterion": "Manager review", "automated": False}
+    booking.decision_reason = decision_reason or {"criterion": "Manager review", "rejection_reason": note, "automated": False}
 
     user = db.query(User).filter(User.id == booking.user_id).first()
     credit_service.release_hold(db, user, booking.credits_held, booking.id)
@@ -345,15 +366,16 @@ def reject_booking(
         entity_type="booking",
         entity_id=booking.id,
         action="BOOKING_REJECTED",
-        payload={"manager_id": manager.id, "note": note, "credits_released": booking.credits_held},
+        payload={"manager_id": manager.id, "reason": note, "credits_released": booking.credits_held},
         actor_id=manager.id,
         actor_role=manager.role,
+        rationale=note,
     )
     notification_service.notify(
         db, booking.user_id,
         title="Booking Rejected",
-        message=f"Your booking #{booking.id} was rejected. {note or ''}",
-        notif_type="BOOKING_UPDATE",
+        message=f"Your booking #{booking.id} was rejected. Reason: {note}",
+        notif_type="REJECTION",
         entity_type="booking",
         entity_id=booking.id,
     )
@@ -362,6 +384,70 @@ def reject_booking(
     from app.services.waitlist_service import auto_promote_waitlist_on_cancellation
     auto_promote_waitlist_on_cancellation(db, booking)
 
+    return booking
+
+
+def extend_booking(
+    db: Session, booking_id: int, actor: User, extra_hours: int = 1
+) -> Booking:
+    """
+    Extends an active IN_PROGRESS or APPROVED booking if:
+    1. Extra hours <= max_booking_hours
+    2. User has enough spendable credits
+    3. No overlapping booking exists for the extended slot interval
+    """
+    booking = _get_booking_or_404(db, booking_id)
+    _assert_status(booking, "IN_PROGRESS", "APPROVED")
+
+    if actor.role == "user" and booking.user_id != actor.id:
+        raise HTTPException(status_code=403, detail="Cannot extend another user's session.")
+
+    new_end = booking.slot_end + timedelta(hours=extra_hours)
+    equip = db.query(Equipment).filter(Equipment.id == booking.equipment_id).first()
+
+    # Check overlap
+    overlap = (
+        db.query(Booking)
+        .filter(
+            Booking.equipment_id == booking.equipment_id,
+            Booking.id != booking.id,
+            Booking.status.in_(["APPROVED", "IN_PROGRESS"]),
+            Booking.slot_start < new_end,
+            Booking.slot_end > booking.slot_end,
+        )
+        .first()
+    )
+    if overlap:
+        raise HTTPException(status_code=409, detail="Cannot extend: slot overlaps with an upcoming booking.")
+
+    # Check and hold credits for extension
+    cost = extra_hours * equip.credit_per_hour
+    user = db.query(User).filter(User.id == booking.user_id).first()
+    credit_service.hold_credits(db, user, cost, booking.id)
+
+    booking.slot_end = new_end
+    booking.credits_held += cost
+
+    audit_service.write_audit(
+        db,
+        entity_type="booking",
+        entity_id=booking.id,
+        action="BOOKING_EXTENDED",
+        payload={"extra_hours": extra_hours, "new_end": str(new_end), "extra_cost": cost},
+        actor_id=actor.id,
+        actor_role=actor.role,
+        rationale=f"Session extended by {extra_hours} hour(s).",
+    )
+
+    notification_service.notify(
+        db,
+        user_id=booking.user_id,
+        title="Session Extended ⏱️",
+        message=f"Booking #{booking.id} has been extended by {extra_hours} hour(s) until {new_end.strftime('%H:%M')}.",
+        notif_type="EXTENSION",
+        entity_type="booking",
+        entity_id=booking.id,
+    )
     return booking
 
 
