@@ -14,7 +14,7 @@ services:
     rootDir: backend
     buildCommand: |
       pip install -r requirements.txt
-      cd ../frontend && npm ci && npm run build && cp -r dist ../backend/static
+      cd ../frontend && npm ci && npm run build && mkdir -p ../backend/static && cp -r dist/* ../backend/static/
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
