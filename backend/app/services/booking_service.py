@@ -1,23 +1,27 @@
 """
-Booking service — state machine transitions for bookings.
+Booking service — state machine transitions for bookings,
+integrated with the pure eligibility engine and counterfactual generator.
 
-Every transition:
-1. Validates the current state allows the requested transition.
-2. Applies credit changes via credit_service.
-3. Writes to the audit log via audit_service.
-4. Sends an in-app notification via notification_service.
+Non-negotiables enforced:
+1. Rejects impossible requests early using evaluate_booking_eligibility().
+2. Prevents overlapping approved/active bookings inside an atomic transaction.
+3. Holds credits safely and rolls back on failure.
+4. Every state transition and rejection is appended to the hash-chained audit log.
+5. On conflict or failure, generates actionable counterfactual explanations.
 """
 from __future__ import annotations
 
 from math import ceil
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.clock import app_now
-from app.models import ActionProposal, Booking, Equipment, User
+from app.models import ActionProposal, Booking, Equipment, EquipmentAvailabilityWindow, User, UserCredential
 from app.services import audit_service, credit_service, notification_service
+from app.services.eligibility_engine import evaluate_booking_eligibility
+from app.services.counterfactual_engine import generate_counterfactual_explanations
 
 CHECKIN_WINDOW_MINUTES = 15
 
@@ -38,8 +42,8 @@ def _assert_status(booking: Booking, *allowed: str) -> None:
 
 
 def _calc_cost(equipment: Equipment, slot_start, slot_end) -> int:
-    hours = ceil((slot_end - slot_start).total_seconds() / 3600)
-    return hours * equipment.credit_per_hour
+    hours = max(1, ceil((slot_end - slot_start).total_seconds() / 3600))
+    return (hours * equipment.credit_per_hour) + equipment.deposit_credits
 
 
 def create_booking(
@@ -48,7 +52,11 @@ def create_booking(
     equipment_id: int,
     slot_start,
     slot_end,
-    purpose: Optional[str],
+    purpose: Optional[str] = None,
+    priority_tier: str = "STANDARD",
+    group_name: Optional[str] = None,
+    has_supervisor_signoff: bool = False,
+    supervisor_name: Optional[str] = None,
 ) -> Booking:
     equip = db.query(Equipment).filter(Equipment.id == equipment_id).first()
     if not equip:
@@ -56,29 +64,117 @@ def create_booking(
     if equip.status != "available":
         raise HTTPException(status_code=409, detail=f"Equipment is '{equip.status}', not bookable.")
 
-    duration_hours = (slot_end - slot_start).total_seconds() / 3600
-    if duration_hours <= 0:
-        raise HTTPException(status_code=422, detail="slot_end must be after slot_start.")
-    if duration_hours > equip.max_booking_hours:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Duration {duration_hours:.1f}h exceeds max {equip.max_booking_hours}h.",
-        )
+    now = app_now()
+    user_creds_db = db.query(UserCredential).filter(UserCredential.user_id == user.id).all()
+    user_creds = [
+        {
+            "credential_type": c.credential_type,
+            "is_verified": c.is_verified,
+            "expires_at": c.expires_at,
+        }
+        for c in user_creds_db
+    ]
 
-    # Conflict check: overlapping PENDING/APPROVED/IN_PROGRESS bookings
-    conflict = (
+    windows_db = db.query(EquipmentAvailabilityWindow).filter(
+        EquipmentAvailabilityWindow.equipment_id == equipment_id
+    ).all()
+    avail_windows = [
+        {"day_of_week": w.day_of_week, "start_time": w.start_time, "end_time": w.end_time}
+        for w in windows_db
+    ]
+
+    user_data = {
+        "is_active": user.is_active,
+        "strike_count": user.strike_count,
+        "role": user.role,
+        "spendable_credits": user.credit_balance - user.credit_held,
+        "credentials": user_creds,
+    }
+
+    equipment_data = {
+        "credit_per_hour": equip.credit_per_hour,
+        "deposit_credits": equip.deposit_credits,
+        "max_booking_hours": equip.max_booking_hours,
+        "required_credentials": equip.required_credentials or [],
+        "rules": equip.rules or {},
+        "availability_windows": avail_windows,
+    }
+
+    booking_req = {
+        "slot_start": slot_start,
+        "slot_end": slot_end,
+        "has_supervisor_signoff": has_supervisor_signoff,
+        "supervisor_name": supervisor_name,
+    }
+
+    # Fetch existing active bookings for slot overlap check & counterfactual search
+    existing_bookings_db = (
         db.query(Booking)
         .filter(
             Booking.equipment_id == equipment_id,
-            Booking.status.in_(["PENDING", "APPROVED", "IN_PROGRESS"]),
-            Booking.slot_start < slot_end,
-            Booking.slot_end > slot_start,
+            Booking.status.in_(["APPROVED", "IN_PROGRESS", "PENDING"]),
         )
-        .first()
+        .all()
     )
-    if conflict:
-        raise HTTPException(status_code=409, detail="Slot conflicts with an existing booking.")
+    existing_bookings = [
+        {"slot_start": b.slot_start, "slot_end": b.slot_end, "id": b.id, "status": b.status}
+        for b in existing_bookings_db
+    ]
 
+    # 1. Pure Eligibility Engine Check
+    eval_result = evaluate_booking_eligibility(user_data, equipment_data, booking_req, now)
+
+    # 2. Overlap Conflict Check
+    conflict = next(
+        (b for b in existing_bookings if b["slot_start"] < slot_end and b["slot_end"] > slot_start),
+        None,
+    )
+
+    if not eval_result.is_eligible or conflict is not None:
+        # Generate counterfactual actionable recommendations
+        counterfactuals = generate_counterfactual_explanations(
+            user_data=user_data,
+            equipment_data=equipment_data,
+            booking_request=booking_req,
+            current_time=now,
+            existing_bookings=existing_bookings,
+        )
+
+        rejection_reason = (
+            "Slot conflicts with an existing reservation."
+            if conflict else "; ".join(eval_result.reasons_failed)
+        )
+
+        # Audit log the failed request attempt for security and fairness review
+        audit_service.write_audit(
+            db,
+            entity_type="booking",
+            entity_id=0,
+            action="BOOKING_REQUEST_REJECTED_EARLY",
+            payload={
+                "user_id": user.id,
+                "equipment_id": equipment_id,
+                "slot_start": str(slot_start),
+                "slot_end": str(slot_end),
+                "rejection_reasons": eval_result.reasons_failed if not conflict else ["Slot conflict"],
+                "counterfactuals": counterfactuals,
+            },
+            actor_id=user.id,
+            actor_role=user.role,
+            rationale=rejection_reason,
+        )
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT if conflict else status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": rejection_reason,
+                "reasons": eval_result.reasons_failed if not conflict else ["Slot is already reserved by another user."],
+                "counterfactuals": counterfactuals,
+            },
+        )
+
+    # 3. Request is fully eligible and conflict-free -> Proceed atomically
     cost = _calc_cost(equip, slot_start, slot_end)
 
     booking = Booking(
@@ -88,6 +184,10 @@ def create_booking(
         slot_start=slot_start,
         slot_end=slot_end,
         purpose=purpose,
+        priority_tier=priority_tier,
+        group_name=group_name,
+        has_supervisor_signoff=has_supervisor_signoff,
+        supervisor_name=supervisor_name,
         credits_held=cost,
     )
     db.add(booking)
@@ -105,6 +205,7 @@ def create_booking(
             "equipment_id": equipment_id,
             "slot_start": str(slot_start),
             "slot_end": str(slot_end),
+            "priority_tier": priority_tier,
             "credits_held": cost,
         },
         actor_id=user.id,
@@ -114,7 +215,7 @@ def create_booking(
     notification_service.notify(
         db, user.id,
         title="Booking Submitted",
-        message=f"Your booking for '{equip.name}' on {slot_start.strftime('%d %b %Y %H:%M')} is pending manager approval.",
+        message=f"Your booking for '{equip.name}' on {slot_start.strftime('%d %b %Y %H:%M')} is submitted.",
         notif_type="BOOKING_UPDATE",
         entity_type="booking",
         entity_id=booking.id,
@@ -127,6 +228,24 @@ def approve_booking(
 ) -> Booking:
     booking = _get_booking_or_404(db, booking_id)
     _assert_status(booking, "PENDING")
+
+    # Atomic transactional check for conflicts before final approval
+    overlap = (
+        db.query(Booking)
+        .filter(
+            Booking.equipment_id == booking.equipment_id,
+            Booking.id != booking.id,
+            Booking.status.in_(["APPROVED", "IN_PROGRESS"]),
+            Booking.slot_start < booking.slot_end,
+            Booking.slot_end > booking.slot_start,
+        )
+        .first()
+    )
+    if overlap:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot approve: slot overlaps with confirmed Booking #{overlap.id}.",
+        )
 
     booking.status = "APPROVED"
     booking.manager_note = note
@@ -189,7 +308,6 @@ def cancel_booking(db: Session, booking_id: int, actor: User) -> Booking:
     booking = _get_booking_or_404(db, booking_id)
     _assert_status(booking, "PENDING", "APPROVED", "IN_PROGRESS", "NO_SHOW_PROPOSED")
 
-    # Regular user can only cancel their own booking
     if actor.role == "user" and booking.user_id != actor.id:
         raise HTTPException(status_code=403, detail="Cannot cancel another user's booking.")
 
@@ -231,8 +349,7 @@ def checkin_booking(db: Session, booking_id: int, actor: User) -> Booking:
     if delta_minutes > CHECKIN_WINDOW_MINUTES:
         raise HTTPException(
             status_code=409,
-            detail=f"Check-in is only allowed within ±{CHECKIN_WINDOW_MINUTES} min of slot start. "
-                   f"Current offset: {delta_minutes:.1f} min.",
+            detail=f"Check-in is only allowed within ±{CHECKIN_WINDOW_MINUTES} min of slot start. Current offset: {delta_minutes:.1f} min.",
         )
 
     booking.status = "IN_PROGRESS"
@@ -290,10 +407,6 @@ def checkout_booking(db: Session, booking_id: int, actor: User) -> Booking:
 
 
 def propose_no_show(db: Session, booking: Booking) -> ActionProposal:
-    """
-    Called by APScheduler when check-in window has passed without a check-in.
-    Creates a PENDING proposal — manager must confirm before credits are forfeited.
-    """
     rationale = (
         f"Booking #{booking.id} (equipment_id={booking.equipment_id}) had slot_start "
         f"{booking.slot_start} UTC. No check-in was recorded. "
@@ -338,4 +451,3 @@ def propose_no_show(db: Session, booking: Booking) -> ActionProposal:
         entity_id=booking.id,
     )
     return proposal
-

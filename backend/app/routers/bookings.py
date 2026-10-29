@@ -28,6 +28,10 @@ def create_booking(
         slot_start=payload.slot_start,
         slot_end=payload.slot_end,
         purpose=payload.purpose,
+        priority_tier=payload.priority_tier,
+        group_name=payload.group_name,
+        has_supervisor_signoff=payload.has_supervisor_signoff,
+        supervisor_name=payload.supervisor_name,
     )
     db.commit()
     db.refresh(booking)

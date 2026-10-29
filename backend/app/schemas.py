@@ -193,11 +193,25 @@ class BookingCreate(BaseModel):
     slot_start: datetime
     slot_end: datetime
     purpose: Optional[str] = None
+    priority_tier: str = "STANDARD"  # STANDARD | PRIORITY | RESEARCH | EMERGENCY
+    group_name: Optional[str] = None
+    has_supervisor_signoff: bool = False
+    supervisor_name: Optional[str] = None
 
 
 class BookingManagerAction(BaseModel):
     note: Optional[str] = None
     decision_reason: Optional[Dict[str, Any]] = None
+
+
+class CounterfactualSuggestion(BaseModel):
+    type: str
+    action: str
+    message: str
+    details: Optional[str] = None
+    suggested_slot_start: Optional[str] = None
+    suggested_slot_end: Optional[str] = None
+    credits_required: Optional[int] = None
 
 
 class BookingOut(BaseModel):
@@ -211,9 +225,14 @@ class BookingOut(BaseModel):
     checked_out_at: Optional[datetime]
     credits_held: int
     credits_charged: int
+    priority_tier: str = "STANDARD"
+    group_name: Optional[str] = None
+    has_supervisor_signoff: bool = False
+    supervisor_name: Optional[str] = None
     purpose: Optional[str]
     manager_note: Optional[str]
     decision_reason: Optional[Dict[str, Any]]
+    counterfactuals: Optional[List[CounterfactualSuggestion]] = None
     created_at: datetime
     updated_at: datetime
 

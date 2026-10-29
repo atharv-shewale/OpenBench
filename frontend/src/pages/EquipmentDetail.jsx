@@ -15,7 +15,9 @@ import {
   Coins,
   CheckCircle2,
   Building2,
-  UserCheck,
+  Sparkles,
+  ArrowRight,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function EquipmentDetail() {
@@ -31,12 +33,18 @@ export default function EquipmentDetail() {
   const [elError, setElError] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // Booking quick form state
+  // Booking form state
   const [bookingDate, setBookingDate] = useState("");
   const [bookingHours, setBookingHours] = useState(2);
   const [bookingPurpose, setBookingPurpose] = useState("");
+  const [priorityTier, setPriorityTier] = useState("STANDARD");
+  const [groupName, setGroupName] = useState("");
+  const [hasSupervisorSignoff, setHasSupervisorSignoff] = useState(false);
+  const [supervisorName, setSupervisorName] = useState("");
+
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(null);
+  const [bookingFailure, setBookingFailure] = useState(null);
 
   const fetchEquipment = async () => {
     setLoading(true);
@@ -87,6 +95,7 @@ export default function EquipmentDetail() {
     }
 
     setBookingSubmitting(true);
+    setBookingFailure(null);
     try {
       const start = new Date(bookingDate);
       const end = new Date(start.getTime() + bookingHours * 60 * 60 * 1000);
@@ -96,14 +105,47 @@ export default function EquipmentDetail() {
         slot_start: start.toISOString(),
         slot_end: end.toISOString(),
         purpose: bookingPurpose,
+        priority_tier: priorityTier,
+        group_name: groupName,
+        has_supervisor_signoff: hasSupervisorSignoff,
+        supervisor_name: supervisorName,
       });
 
       setBookingSuccess(res.data);
     } catch (err) {
-      alert(err.response?.data?.detail || "Booking failed.");
+      const detail = err.response?.data?.detail;
+      if (typeof detail === "object" && detail !== null) {
+        setBookingFailure(detail);
+      } else {
+        setBookingFailure({
+          message: detail || "Booking could not be processed.",
+          counterfactuals: [],
+        });
+      }
     } finally {
       setBookingSubmitting(false);
     }
+  };
+
+  const applyCounterfactual = (suggestion) => {
+    if (suggestion.suggested_slot_start) {
+      // Convert to local datetime-local input string: YYYY-MM-DDTHH:MM
+      const d = new Date(suggestion.suggested_slot_start);
+      const pad = (n) => String(n).padStart(2, "0");
+      const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setBookingDate(localStr);
+    }
+    if (suggestion.action === "shorten_duration" && suggestion.suggested_slot_start && suggestion.suggested_slot_end) {
+      const s = new Date(suggestion.suggested_slot_start);
+      const e = new Date(suggestion.suggested_slot_end);
+      const hrs = Math.max(1, Math.round((e - s) / 3600000));
+      setBookingHours(hrs);
+    }
+    if (suggestion.action === "request_supervisor_signoff") {
+      setHasSupervisorSignoff(true);
+      if (!supervisorName) setSupervisorName("Faculty Lab Sponsor");
+    }
+    setBookingFailure(null);
   };
 
   if (loading) {
@@ -251,7 +293,7 @@ export default function EquipmentDetail() {
               {equipment.rules && Object.keys(equipment.rules).length > 0 && (
                 <div className="bg-white rounded-2xl p-5 border border-gray-200">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5 mb-3">
-                    <FileText className="w-4 h-4 text-brand-600" /> Specific Machine Rules & Parameters
+                    <FileText className="w-4 h-4 text-brand-600" /> Machine Operating Parameters & Checklist
                   </h4>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     {Object.entries(equipment.rules).map(([key, val]) => (
@@ -308,12 +350,61 @@ export default function EquipmentDetail() {
 
               {/* Booking Request Box */}
               <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
-                <h3 className="font-bold text-gray-900 text-lg mb-4">Request a Slot</h3>
+                <h3 className="font-bold text-gray-900 text-lg mb-1">Request a Slot</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Held credits are only deducted upon verified session checkout.
+                </p>
+
+                {/* Counterfactual Feedback Callout (When Rejected/Waitlisted) */}
+                {bookingFailure && (
+                  <div className="mb-5 bg-rose-50 border border-rose-200 rounded-2xl p-4 text-xs text-rose-900 space-y-3">
+                    <div>
+                      <p className="font-bold flex items-center gap-1.5 text-rose-800">
+                        <AlertTriangle className="w-4 h-4 text-rose-600" /> Request Not Approved
+                      </p>
+                      <p className="mt-1 text-rose-700 leading-relaxed font-medium">
+                        {bookingFailure.message}
+                      </p>
+                    </div>
+
+                    {bookingFailure.counterfactuals && bookingFailure.counterfactuals.length > 0 && (
+                      <div className="pt-2 border-t border-rose-200/80 space-y-2">
+                        <p className="font-extrabold uppercase tracking-wider text-[10px] text-rose-700 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Actionable Fixes ("You'd be approved if..."):
+                        </p>
+                        <div className="space-y-2">
+                          {bookingFailure.counterfactuals.map((cf, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white/90 border border-rose-200 p-2.5 rounded-xl flex items-start justify-between gap-2 shadow-2xs"
+                            >
+                              <div>
+                                <p className="font-semibold text-gray-900">{cf.message}</p>
+                                {cf.details && (
+                                  <p className="text-[11px] text-gray-500 mt-0.5">{cf.details}</p>
+                                )}
+                              </div>
+                              {(cf.suggested_slot_start || cf.action === "request_supervisor_signoff") && (
+                                <button
+                                  type="button"
+                                  onClick={() => applyCounterfactual(cf)}
+                                  className="shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 px-2.5 py-1 rounded-lg font-bold text-[11px] border border-brand-200 transition"
+                                >
+                                  Apply Fix
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {bookingSuccess ? (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-800 text-sm">
                     <p className="font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Booking Requested!
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Booking Submitted!
                     </p>
                     <p className="text-xs mt-1">
                       Booking #{bookingSuccess.id} created in <strong>PENDING</strong> status.{" "}
@@ -341,33 +432,87 @@ export default function EquipmentDetail() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
-                        Duration (Hours)
-                      </label>
-                      <select
-                        value={bookingHours}
-                        onChange={(e) => setBookingHours(Number(e.target.value))}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-brand-500 focus:bg-white"
-                      >
-                        {Array.from(
-                          { length: equipment.max_booking_hours || 4 },
-                          (_, idx) => idx + 1
-                        ).map((h) => (
-                          <option key={h} value={h}>
-                            {h} hour{h > 1 ? "s" : ""} ({h * equipment.credit_per_hour} credits)
-                          </option>
-                        ))}
-                      </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                          Duration
+                        </label>
+                        <select
+                          value={bookingHours}
+                          onChange={(e) => setBookingHours(Number(e.target.value))}
+                          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-brand-500 focus:bg-white"
+                        >
+                          {Array.from(
+                            { length: equipment.max_booking_hours || 4 },
+                            (_, idx) => idx + 1
+                          ).map((h) => (
+                            <option key={h} value={h}>
+                              {h} hr{h > 1 ? "s" : ""} ({h * equipment.credit_per_hour + equipment.deposit_credits} cr)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                          Priority Tier
+                        </label>
+                        <select
+                          value={priorityTier}
+                          onChange={(e) => setPriorityTier(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-brand-500 focus:bg-white"
+                        >
+                          <option value="STANDARD">Standard</option>
+                          <option value="PRIORITY">Priority</option>
+                          <option value="RESEARCH">Research</option>
+                          <option value="EMERGENCY">Emergency</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
-                        Project / Usage Purpose
+                        Group / Project Team (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Formula Student Suspension Subsystem"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-brand-500 focus:bg-white"
+                      />
+                    </div>
+
+                    {/* Supervisor Sign-Off toggle if required or advised */}
+                    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-gray-800">
+                        <input
+                          type="checkbox"
+                          checked={hasSupervisorSignoff}
+                          onChange={(e) => setHasSupervisorSignoff(e.target.checked)}
+                          className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4"
+                        />
+                        <span>Supervisor / Faculty Sign-Off Endorsed</span>
+                      </label>
+
+                      {hasSupervisorSignoff && (
+                        <input
+                          type="text"
+                          placeholder="Supervisor / Faculty Mentor Full Name"
+                          value={supervisorName}
+                          onChange={(e) => setSupervisorName(e.target.value)}
+                          className="w-full bg-white border border-gray-300 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500"
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                        Purpose of Session
                       </label>
                       <textarea
                         rows={2}
-                        placeholder="e.g. Tensile testing of welded aluminum coupons for MSME batch order..."
+                        placeholder="Detail materials, prototype goals, or test standards..."
                         value={bookingPurpose}
                         onChange={(e) => setBookingPurpose(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:bg-white"
@@ -377,21 +522,13 @@ export default function EquipmentDetail() {
                     <div className="pt-2">
                       <button
                         type="submit"
-                        disabled={
-                          bookingSubmitting ||
-                          (eligibility && !eligibility.is_eligible) ||
-                          equipment.status !== "available"
-                        }
-                        className={`w-full py-3 rounded-xl font-bold text-sm transition shadow-sm ${
-                          eligibility && !eligibility.is_eligible
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                            : "bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/20"
-                        }`}
+                        disabled={bookingSubmitting || equipment.status !== "available"}
+                        className="w-full py-3 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-700 text-white transition shadow-sm shadow-brand-500/20"
                       >
                         {bookingSubmitting
-                          ? "Reserving..."
+                          ? "Verifying Request..."
                           : user
-                          ? `Book Slot (${bookingHours * equipment.credit_per_hour} credits)`
+                          ? `Submit Booking Request (${bookingHours * equipment.credit_per_hour + equipment.deposit_credits} cr)`
                           : "Sign in to Book"}
                       </button>
                     </div>
@@ -433,4 +570,3 @@ export default function EquipmentDetail() {
     </div>
   );
 }
-

@@ -204,6 +204,10 @@ class Booking(Base):
     checked_out_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     credits_held: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     credits_charged: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    priority_tier: Mapped[str] = mapped_column(String(20), nullable=False, default="STANDARD")  # STANDARD | PRIORITY | RESEARCH | EMERGENCY
+    group_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Student team, startup group, MSME department
+    has_supervisor_signoff: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    supervisor_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     purpose: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     manager_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     decision_reason: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
