@@ -8,9 +8,12 @@ load_dotenv()
 
 DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./openbench.db")
 
-# Render / Heroku use postgres:// but SQLAlchemy 2.x needs postgresql://
+# Render / Heroku provide postgres:// or postgresql:// without explicit driver.
+# Normalize to postgresql+psycopg2:// to guarantee deterministic driver selection.
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 
