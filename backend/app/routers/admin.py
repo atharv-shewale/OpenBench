@@ -170,7 +170,7 @@ def reset_clock(
 def seed_data(
     wipe: bool = False,
     db: Session = Depends(get_db),
-    _=Depends(get_admin),
+    _=Depends(require_demo_mode),
 ):
     from app.seed import run_seed  # lazy import to avoid circular deps
     result = run_seed(db, wipe=wipe)

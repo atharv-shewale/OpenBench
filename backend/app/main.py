@@ -41,6 +41,10 @@ async def lifespan(app: FastAPI):
 
 
 def _migrate_columns() -> None:
+    # Column migration via PRAGMA is SQLite-specific
+    if not str(engine.url).startswith("sqlite"):
+        return
+
     from sqlalchemy import text
     with engine.connect() as conn:
         try:
@@ -92,12 +96,16 @@ def _migrate_columns() -> None:
 def _auto_seed() -> None:
     from app.database import SessionLocal
     from app.seed import run_seed
-    from app.models import User as UserModel
+    from app.models import User as UserModel, Equipment as EquipmentModel
 
     db = SessionLocal()
     try:
-        if db.query(UserModel).count() == 0:
-            run_seed(db, wipe=False)
+        user_count = db.query(UserModel).count()
+        equip_count = db.query(EquipmentModel).count()
+        if user_count == 0 or equip_count == 0:
+            print(f"[AUTO_SEED] Empty or incomplete database detected (users={user_count}, equipment={equip_count}). Running seed...")
+            run_seed(db, wipe=True)
+            print("[AUTO_SEED] Seeding completed successfully.")
     except Exception as exc:
         print(f"[AUTO_SEED] failed: {exc}")
     finally:
